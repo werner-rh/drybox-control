@@ -494,15 +494,16 @@ void loop() {
             if(curDryTime_Hours > 0) {
               curDryTime_Hours--;
               curDryTime_Minutes = 59;
-              display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
               display.PrintDestTime(curDryTime_Hours, curDryTime_Minutes, 5);
             } else {
               // drying ready
               dryController(DST_TEARDOWN, temperature);
+              display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
               AppState = AST_ENDVENTILATION;
               //add a las fresh air ventilation after drying
               airExChgEndCounter=2000;  // fresh air for 20 seconds
               SetPWMRate(FANAIR_PIN, 80);              
+              display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
             }
           }
         }
@@ -680,28 +681,28 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
 
   if(dryDestTemp > 32 && dryDestTemp <= 35) {
     rampHeatValues[0]=28; rampHeatFanValues[0]=34;
-    rampHeatValues[1]=54; rampHeatFanValues[1]=52;
+    rampHeatValues[1]=52; rampHeatFanValues[1]=52;
     rampHeatValues[2]=64; rampHeatFanValues[2]=64;
     rampHeatValues[3]=80; rampHeatFanValues[3]=76;
   }
 
   if(dryDestTemp > 35 && dryDestTemp <= 40) {
     rampHeatValues[0]=30; rampHeatFanValues[0]=34;
-    rampHeatValues[1]=52; rampHeatFanValues[1]=56;
+    rampHeatValues[1]=54; rampHeatFanValues[1]=56;
     rampHeatValues[2]=78; rampHeatFanValues[2]=68;
     rampHeatValues[3]=88; rampHeatFanValues[3]=78;
   }
 
   if(dryDestTemp > 40 && dryDestTemp <= 45) {   
     rampHeatValues[0]=35; rampHeatFanValues[0]=40;
-    rampHeatValues[1]=50; rampHeatFanValues[1]=64;
+    rampHeatValues[1]=56; rampHeatFanValues[1]=64;
     rampHeatValues[2]=68; rampHeatFanValues[2]=72;
     rampHeatValues[3]=88; rampHeatFanValues[3]=82;
   }
 
   if(dryDestTemp > 45 && dryDestTemp <= 50) {   // set is fine for 45-50 degrees
     rampHeatValues[0]=35; rampHeatFanValues[0]=40;
-    rampHeatValues[1]=56; rampHeatFanValues[1]=64;
+    rampHeatValues[1]=58; rampHeatFanValues[1]=64;
     rampHeatValues[2]=82; rampHeatFanValues[2]=72;
     rampHeatValues[3]=96; rampHeatFanValues[3]=84;
   }
