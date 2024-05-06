@@ -94,7 +94,12 @@ int curDryTime_Hours = 1;
 int curDryTime_Minutes = 30;
 
 //-- State var for rotary encoder weitch  ----
-volatile  uint8_t encoderBUTTON_State=0;
+uint8_t encoderBUTTON_State=0;
+
+//-- Remember State on for Heater, Heater Fan and Ventilation
+boolean StateHeaterOn = false;
+boolean StateHeaterFanOn = false;
+boolean StateVentilationOn = false;
 
 DryBoxDisplay display;
 DHT dht(DHTPIN, DHTTYPE);
@@ -161,6 +166,7 @@ void setup() {
   last_DT_pinstate = digitalRead(DT_pin);
 
   display.Setup();
+  display.SetVersion(APP_VERSION);
   display.ScreenOut(SCR_WELCOME);
   dht.begin();                      // start DHT
 
@@ -219,10 +225,27 @@ void EncoderValueChange(int * valToModify, int rangeMin, int rangeMax) {
 }
 
 
+boolean IsPWMStateOn(int pwmValue) {
+  if(pwmValue > 0)
+    return true;
+  else  
+    return false;
+}
+
 void SetPWMRate(uint8_t pin, int ratePercent)
 {
   int PWMVal = 255 * ratePercent / 100;
   analogWrite(pin,PWMVal);
+
+  // check which Pin (heater, heater fan or ventilation) and store the state on or off
+  switch (pin) {
+  case FANAIR_PIN: StateVentilationOn = IsPWMStateOn(PWMVal);
+  break;
+  case FANHEATING_PIN: StateHeaterFanOn = IsPWMStateOn(PWMVal);
+  break;
+  case HEATING_PIN: StateHeaterOn = IsPWMStateOn(PWMVal);
+  break;
+  }
 }
 
 
@@ -334,6 +357,7 @@ void loop() {
         if(encoderBUTTON_State == 1 && aktModeNo == SELMOD_DRYSTART)  // encoder switch pressed, start drying
         {
           display.ScreenOut(SCR_RUNNING);
+          display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
           display.PrintDestTemp(DryTemperature, 0);
           display.PrintDestTime(DryTime_Hours, DryTime_Minutes, 5);
           curDryTime_Hours = DryTime_Hours;
@@ -463,12 +487,14 @@ void loop() {
           runMinuteTimer = 6000;
           if(curDryTime_Minutes > 0) {
             curDryTime_Minutes--;
+            display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
             display.PrintDestTime(curDryTime_Hours, curDryTime_Minutes, 5);
                
           } else {
             if(curDryTime_Hours > 0) {
               curDryTime_Hours--;
               curDryTime_Minutes = 59;
+              display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
               display.PrintDestTime(curDryTime_Hours, curDryTime_Minutes, 5);
             } else {
               // drying ready
@@ -482,8 +508,10 @@ void loop() {
         }
 
         // Heating control ------------------------------------
-        if(AppState == AST_RUNDRYING) // only while AST_RUNDRYING is active, call dryController
+        if(AppState == AST_RUNDRYING) {// only while AST_RUNDRYING is active, call dryController
           dryController(0, temperature);
+          display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
+        }
 
         if(encoderBUTTON_State == 1)
         {
@@ -520,6 +548,7 @@ void loop() {
           dryController(0, temperature);
           AppState = AST_RUNDRYING;
           display.ScreenOut(SCR_RUNNING);
+          display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
           display.PrintDestTemp(DryTemperature, 0);
           display.PrintDestTime(curDryTime_Hours, curDryTime_Minutes, 5);
         }    
@@ -663,11 +692,25 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
     rampHeatValues[3]=88; rampHeatFanValues[3]=78;
   }
 
-  if(dryDestTemp > 40 && dryDestTemp <= 52) {
+  if(dryDestTemp > 40 && dryDestTemp <= 45) {   
+    rampHeatValues[0]=35; rampHeatFanValues[0]=40;
+    rampHeatValues[1]=50; rampHeatFanValues[1]=64;
+    rampHeatValues[2]=68; rampHeatFanValues[2]=72;
+    rampHeatValues[3]=88; rampHeatFanValues[3]=82;
+  }
+
+  if(dryDestTemp > 45 && dryDestTemp <= 50) {   // set is fine for 45-50 degrees
     rampHeatValues[0]=35; rampHeatFanValues[0]=40;
     rampHeatValues[1]=56; rampHeatFanValues[1]=64;
     rampHeatValues[2]=82; rampHeatFanValues[2]=72;
-    rampHeatValues[3]=96; rampHeatFanValues[3]=82;
+    rampHeatValues[3]=96; rampHeatFanValues[3]=84;
+  }
+
+  if(dryDestTemp > 50 ) {   
+    rampHeatValues[0]=45; rampHeatFanValues[0]=50;
+    rampHeatValues[1]=65; rampHeatFanValues[1]=64;
+    rampHeatValues[2]=86; rampHeatFanValues[2]=72;
+    rampHeatValues[3]=98; rampHeatFanValues[3]=88;
   }
 }
 
@@ -745,7 +788,9 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
      case DST_WAIT_DEST_TEMP:
         if(oneSecondCounter > 0) {
           oneSecondCounter--;
-        } else {
+        } else { 
+
+          // if actual temp is near dest temp, lower the power a bit. Depending from dest temp
            if(aktTemperature + 0.5 >= DryTemperature && DryTemperature <= 32) {
             SetPWMRate(HEATING_PIN, rampUpHeatPWM[1]);            
           } 
@@ -762,8 +807,8 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
         }
 
         if(aktTemperature >= DryTemperature) {
-          SetPWMRate(FANHEATING_PIN, rampUpFanPWM[0]);
-          SetPWMRate(HEATING_PIN, 0);   
+          SetPWMRate(FANHEATING_PIN, rampUpFanPWM[0]); // heating fan continue with lower speed
+          SetPWMRate(HEATING_PIN, 0);                  // heater off
           DryState = DST_TEMP_REACHED;         
         }        
         break;        
@@ -772,13 +817,13 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
         if(aktTemperature < DryTemperature) {
           oneSecondCounter=100;
           rampSecCounter=0;
-          DryState = DST_RAMPUP_HEATER;
+          DryState = DST_RAMPUP_HEATER;               // go back to ramp up the heater
         }
 
         if(airExChgMinutesCounter >= AIR_EXCHANGE_MINUTES_INTERVAL) {
           airExChgOneMinuteCounter=2000;  // fresh air for 20 seconds
           SetPWMRate(FANAIR_PIN, 80);
-          SetPWMRate(HEATING_PIN, rampUpHeatPWM[1]);  // additional power up the heater a bit
+          SetPWMRate(HEATING_PIN, rampUpHeatPWM[1]);  // additional power up the heater a bit for lower temperature drop
           DryState = DST_AIR_EXCHANGE;
         }
         break;
@@ -787,8 +832,9 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
         if(airExChgOneMinuteCounter > 0) {
           airExChgOneMinuteCounter--;
         } else {
-          airExChgOneMinuteCounter = 6000;
+          airExChgOneMinuteCounter = 6000; //set for next count
           airExChgMinutesCounter = 0;
+          SetPWMRate(HEATING_PIN, 0); // heater has to switch off. Otherwise the temp will continue to raise up 
           SetPWMRate(FANAIR_PIN, 0);
           DryState = DST_TEMP_REACHED;
         }

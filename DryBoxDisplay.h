@@ -40,6 +40,7 @@ private:
 public:
     DryBoxDisplay(/* args */);
     void Setup();
+    void SetVersion(const char  *strVersion);
     void SetBacklight(uint8_t mode);
     void BlinkOn();
     void BlinkOff();
@@ -55,6 +56,7 @@ public:
     void PrintPercentValue(int pValue);
     void PrintDestTemp(int dvalue, uint8_t startPos);
     void PrintDestTime(int hour, int minute, uint8_t startPos);
+    void PrintHFVState(boolean heater, boolean heaterfan, boolean ventilation);
     void ScreenOut(uint8_t uiScreenID); 
 
 };
