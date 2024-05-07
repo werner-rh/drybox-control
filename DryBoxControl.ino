@@ -685,7 +685,7 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
     rampHeatValues[2]=50; rampHeatFanValues[2]=56;
     rampHeatValues[3]=72; rampHeatFanValues[3]=72;    // the last entry is the final value to power the heater and heater fan
     *compareOffset = 0.5;                             // value below destination temperature, when heater is switched to lower power
-    *nearDestHeaterValue = 40;                        // power value for heater near before destination temperature
+    *nearDestHeaterValue = 44;                        // power value for heater near before destination temperature
                                                       // this two values above should prevent over shoot the destination temp to much
     *ventilationHeaterValue = 40;                     // power value for heater during ventilation
   }
@@ -696,8 +696,8 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
     rampHeatValues[2]=64; rampHeatFanValues[2]=64;
     rampHeatValues[3]=80; rampHeatFanValues[3]=76;
     *compareOffset = 0.5;
-    *nearDestHeaterValue = 52;
-    *ventilationHeaterValue = 52;    
+    *nearDestHeaterValue = 58;  
+    *ventilationHeaterValue = 50; 
   }
 
   if(dryDestTemp > 35 && dryDestTemp <= 40) {
@@ -706,8 +706,8 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
     rampHeatValues[2]=78; rampHeatFanValues[2]=68;
     rampHeatValues[3]=88; rampHeatFanValues[3]=78;
     *compareOffset = 0.2;
-    *nearDestHeaterValue = 54;
-    *ventilationHeaterValue = 54;    
+    *nearDestHeaterValue = 62; // 62
+    *ventilationHeaterValue = 54;  // 54 
   }
 
   if(dryDestTemp > 40 && dryDestTemp <= 45) {   
@@ -716,7 +716,7 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
     rampHeatValues[2]=68; rampHeatFanValues[2]=72;
     rampHeatValues[3]=88; rampHeatFanValues[3]=82;
     *compareOffset = 0.2;
-    *nearDestHeaterValue = 56;
+    *nearDestHeaterValue = 66; // may be 68
     *ventilationHeaterValue = 56;    
   }
 
@@ -726,8 +726,8 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
     rampHeatValues[2]=82; rampHeatFanValues[2]=72;
     rampHeatValues[3]=96; rampHeatFanValues[3]=84;
     *compareOffset = 0.2;
-    *nearDestHeaterValue = 58;
-    *ventilationHeaterValue = 58;    
+    *nearDestHeaterValue = 70;
+    *ventilationHeaterValue = 60;    
   }
 
   if(dryDestTemp > 50 ) {   
@@ -736,7 +736,7 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
     rampHeatValues[2]=86; rampHeatFanValues[2]=72;
     rampHeatValues[3]=98; rampHeatFanValues[3]=88;
     *compareOffset = 0.2;
-    *nearDestHeaterValue = 65;
+    *nearDestHeaterValue = 75;
     *ventilationHeaterValue = 65;    
   }
 }

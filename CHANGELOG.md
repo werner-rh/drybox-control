@@ -9,6 +9,7 @@ All notable changes for this project will be documented in this file
 - additional range over over 45 and 50 degrees. Now there are 6 ranges.
 - display showing state of heater, heaterfan and ventilation during drying.
 - refactored initializing power values for each tempeture range.
+- adjust current values for low Hysteresis
 
 ## [0.46]
 ### Added
