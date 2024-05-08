@@ -679,15 +679,16 @@ void loop() {
 void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dryDestTemp,
                    float *compareOffset, uint8_t *nearDestHeaterValue, uint8_t *ventilationHeaterValue) {
 
+  // we are using the same variables for each temperature range. But depending from the range, they are filled with matching values
   if(dryDestTemp <= 32) {
-    rampHeatValues[0]=26; rampHeatFanValues[0]=32;    // the lowest heater fan value is also used, when destinatiion temp is reached
+    rampHeatValues[0]=26; rampHeatFanValues[0]=32;    // rampHeatValues[0] - the lowest heater fan value is also used, when destinatiion temp is reached
     rampHeatValues[1]=40; rampHeatFanValues[1]=44;
     rampHeatValues[2]=50; rampHeatFanValues[2]=56;
-    rampHeatValues[3]=72; rampHeatFanValues[3]=72;    // the last entry is the final value to power the heater and heater fan
-    *compareOffset = 0.5;                             // value below destination temperature, when heater is switched to lower power
-    *nearDestHeaterValue = 44;                        // power value for heater near before destination temperature
+    rampHeatValues[3]=72; rampHeatFanValues[3]=72;    // rampHeatValues[3] - the last entry is the final value to power the heater and heater fan
+    *compareOffset = 0.5;                             // compareOffset - value below destination temperature, when heater is switched to lower power
+    *nearDestHeaterValue = 44;                        // nearDestHeaterValue - power value for heater near before destination temperature
                                                       // this two values above should prevent over shoot the destination temp to much
-    *ventilationHeaterValue = 40;                     // power value for heater during ventilation
+    *ventilationHeaterValue = 40;                     // ventilationHeaterValue - power value for heater during ventilation
   }
 
   if(dryDestTemp > 32 && dryDestTemp <= 35) {
@@ -748,7 +749,7 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
  *
  * Controlling the drying process with heating and fresh air.
  * 
- * param uint8_t doState: force action from extern
+ * param uint8_t doState: force action from external caller
  * param float aktTemperature: actual temperature given from extern
  */
  void dryController(uint8_t doState, float aktTemperature)
