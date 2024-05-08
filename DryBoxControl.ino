@@ -31,7 +31,7 @@
  *
  * D5     - Rotary Encoder Switch
  * D6     - Rotary Encoder DT_pin                 Note: some encoder are different and you may have to change DT and CLK Pin.
- * D7     - Rotary Encoder CLK_pin                      Clockwise spin should increase all values
+ * D7     - Rotary Encoder CLK_pin                      Clockwise spin should increase all values.
  * D8     - Digital in DHT11 sensor
  * D9     - Analog out PWM Fan Air exchange
  * D10    - Analog out PWM Fan Heating
@@ -64,8 +64,9 @@
 #include "DryBoxDisplay.h"
 
 // defines for DHT11 Temp and Humitidy Sensor
-#define DHTPIN 8     // Digital pin connected to the DHT sensor
-#define DHTTYPE DHT11
+#define DHTPIN 8        // Digital pin connected to the DHT sensor
+#define DHTTYPE DHT11   // chose the DHT type you are using
+//#define DHTTYPE DHT22 
 
 volatile uint8_t B100HzToggle = 0;  // 100 Hertz Signal
 uint8_t ui10MilliSekCount = 0;
@@ -73,18 +74,18 @@ uint8_t ui10MilliSekCount = 0;
 int encoder_value = 500;
 int last_encoder_value  = 500;
 int EncSwitch = 5;
-int DT_pin = 6;
-int CLK_pin = 7;
+int DT_pin = 6;   //swap lines to change direction on the encoder
+int CLK_pin = 7;  //swap lines to change direction on the encoder
 int DT_pinstate;
 int last_DT_pinstate;
 
-int AirFanSpeed = 100;    // Airexchange Fan Speed in Percent
+int AirFanSpeed = 100;    // Extract Fan Speed in Percent
 int HeatFanSpeed = 50;    // HeatFan Speed in Percent
 int HeatingPower = 25;    // Heating Power in Percent
 
-int testAirFanSpeed = 0;    // Airexchange Fan Speed in Percent
-int testHeatFanSpeed =0;    // HeatFan Speed in Percent
-int testHeatingPower =0;    // Heating Power in Percent
+int testAirFanSpeed = 0;    // Extract Fan Speed in Percent for testing mode
+int testHeatFanSpeed =0;    // HeatFan Speed in Percent for testing mode
+int testHeatingPower =0;    // Heating Power in Percent for testing mode
 
 // default values at startup, if nothing is stored in the eeprom
 int DryTemperature = 35;    // Destination Dry Temperature in degree celsius
@@ -94,7 +95,12 @@ int curDryTime_Hours = 1;
 int curDryTime_Minutes = 30;
 
 //-- State var for rotary encoder weitch  ----
-volatile  uint8_t encoderBUTTON_State=0;
+uint8_t encoderBUTTON_State=0;
+
+//-- Remember State on for Heater, Heater Fan and Ventilation
+boolean StateHeaterOn = false;
+boolean StateHeaterFanOn = false;
+boolean StateVentilationOn = false;
 
 DryBoxDisplay display;
 DHT dht(DHTPIN, DHTTYPE);
@@ -149,11 +155,11 @@ void setup() {
 
   // setup Heating and air 
   pinMode(FANAIR_PIN, OUTPUT);  
-  analogWrite(FANAIR_PIN, 0);            // PWM Fan Airexchange off
+  analogWrite(FANAIR_PIN, 0);            // PWM Extrcat Fan off
   pinMode(FANHEATING_PIN, OUTPUT);  
-  analogWrite(FANHEATING_PIN, 0);            // PWM Fan Heating off
+  analogWrite(FANHEATING_PIN, 0);        // PWM Heating Fan  off
   pinMode(HEATING_PIN, OUTPUT);
-  analogWrite(HEATING_PIN, 0);            // PWM Heating off  
+  analogWrite(HEATING_PIN, 0);           // PWM Heating off  
 
   ReadSettings();
 
@@ -161,6 +167,7 @@ void setup() {
   last_DT_pinstate = digitalRead(DT_pin);
 
   display.Setup();
+  display.SetVersion(APP_VERSION);
   display.ScreenOut(SCR_WELCOME);
   dht.begin();                      // start DHT
 
@@ -219,10 +226,27 @@ void EncoderValueChange(int * valToModify, int rangeMin, int rangeMax) {
 }
 
 
+boolean IsPWMStateOn(int pwmValue) {
+  if(pwmValue > 0)
+    return true;
+  else  
+    return false;
+}
+
 void SetPWMRate(uint8_t pin, int ratePercent)
 {
   int PWMVal = 255 * ratePercent / 100;
   analogWrite(pin,PWMVal);
+
+  // check which Pin (heater, heater fan or ventilation) and store the state on or off
+  switch (pin) {
+  case FANAIR_PIN: StateVentilationOn = IsPWMStateOn(PWMVal);
+  break;
+  case FANHEATING_PIN: StateHeaterFanOn = IsPWMStateOn(PWMVal);
+  break;
+  case HEATING_PIN: StateHeaterOn = IsPWMStateOn(PWMVal);
+  break;
+  }
 }
 
 
@@ -266,8 +290,8 @@ void loop() {
 
     CheckKeyState(&encoderBUTTON_State, EncSwitch);
 
-    // The DHT11 is a little bit slow, but cheap and fine for this project. So we shouldn't
-    // receive values in to fast intervals
+    // The DHT11 is a little slow,. So we shouldn't
+    // receive values too quickly
     if(ui100HzSensorTimer > 0) {
       ui100HzSensorTimer--;
     } else {
@@ -334,6 +358,7 @@ void loop() {
         if(encoderBUTTON_State == 1 && aktModeNo == SELMOD_DRYSTART)  // encoder switch pressed, start drying
         {
           display.ScreenOut(SCR_RUNNING);
+          display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
           display.PrintDestTemp(DryTemperature, 0);
           display.PrintDestTime(DryTime_Hours, DryTime_Minutes, 5);
           curDryTime_Hours = DryTime_Hours;
@@ -455,7 +480,7 @@ void loop() {
 
       case AST_RUNDRYING:
         // Timer check and display -------------------------------
-        // The active state is called 100 times per second. So 6000 calls are one minute
+        // The active state is called 100 times per second. So 6000 equals one minute
         if(runMinuteTimer > 0) {
           runMinuteTimer--;
         }
@@ -463,6 +488,7 @@ void loop() {
           runMinuteTimer = 6000;
           if(curDryTime_Minutes > 0) {
             curDryTime_Minutes--;
+            display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
             display.PrintDestTime(curDryTime_Hours, curDryTime_Minutes, 5);
                
           } else {
@@ -473,17 +499,21 @@ void loop() {
             } else {
               // drying ready
               dryController(DST_TEARDOWN, temperature);
+              display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
               AppState = AST_ENDVENTILATION;
-              //add a las fresh air ventilation after drying
+              //add a final fresh air ventilation after drying
               airExChgEndCounter=2000;  // fresh air for 20 seconds
               SetPWMRate(FANAIR_PIN, 80);              
+              display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
             }
           }
         }
 
         // Heating control ------------------------------------
-        if(AppState == AST_RUNDRYING) // only while AST_RUNDRYING is active, call dryController
+        if(AppState == AST_RUNDRYING) {// only while AST_RUNDRYING is active, call dryController
           dryController(0, temperature);
+          display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
+        }
 
         if(encoderBUTTON_State == 1)
         {
@@ -520,6 +550,7 @@ void loop() {
           dryController(0, temperature);
           AppState = AST_RUNDRYING;
           display.ScreenOut(SCR_RUNNING);
+          display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
           display.PrintDestTemp(DryTemperature, 0);
           display.PrintDestTime(curDryTime_Hours, curDryTime_Minutes, 5);
         }    
@@ -635,39 +666,79 @@ void loop() {
 // --- functions for temperature control ------------------
 
 /***
-* Setup the rampup values. 
+* Setup the rampup values. All power values are percentage values.
+* We need different power values depending from the choosen temperatures. Currently there are
+* 6 ranges defined. The most importent are the ranges between 40 and 55 degrees.
 *
-* param uint8_t rampValues[]  - adress of an array containing 4 values
+* param uint8_t rampHeatValues[], uint8_t rampHeatFanValues[]  - adress of an array containing 4 values
 * param int dryDestTemp  - destination drying temperature
+* param float *compareOffset - offset comparing destination temperature
+* param uint8_t *nearDestHeaterValue - heater power value near before destination temperature
+* param uint8_t *ventilationHeaterValue - heater power value during ventilation
 */
-void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dryDestTemp) {
+void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dryDestTemp,
+                   float *compareOffset, uint8_t *nearDestHeaterValue, uint8_t *ventilationHeaterValue) {
 
+  // we are using the same variables for each temperature range. But depending which range, they are populated with the appropriate values
   if(dryDestTemp <= 32) {
-    rampHeatValues[0]=26; rampHeatFanValues[0]=32;
+    rampHeatValues[0]=26; rampHeatFanValues[0]=32;    // rampHeatValues[0] - the lowest heater fan value is also used, when destinatiion temp is reached
     rampHeatValues[1]=40; rampHeatFanValues[1]=44;
     rampHeatValues[2]=50; rampHeatFanValues[2]=56;
-    rampHeatValues[3]=72; rampHeatFanValues[3]=72;
+    rampHeatValues[3]=72; rampHeatFanValues[3]=72;    // rampHeatValues[3] - the last entry is the final value to power the heater and heater fan
+    *compareOffset = 0.5;                             // compareOffset - value below destination temperature, when heater is switched to a lower power
+    *nearDestHeaterValue = 44;                        // nearDestHeaterValue - power value for heater near before destination temperature
+                                                      // this two values above should help to prevent over shooting the destination temp by to much
+    *ventilationHeaterValue = 40;                     // ventilationHeaterValue - power value for heater during ventilation
   }
 
   if(dryDestTemp > 32 && dryDestTemp <= 35) {
     rampHeatValues[0]=28; rampHeatFanValues[0]=34;
-    rampHeatValues[1]=54; rampHeatFanValues[1]=52;
+    rampHeatValues[1]=52; rampHeatFanValues[1]=52;
     rampHeatValues[2]=64; rampHeatFanValues[2]=64;
     rampHeatValues[3]=80; rampHeatFanValues[3]=76;
+    *compareOffset = 0.5;
+    *nearDestHeaterValue = 58;  
+    *ventilationHeaterValue = 50; 
   }
 
   if(dryDestTemp > 35 && dryDestTemp <= 40) {
     rampHeatValues[0]=30; rampHeatFanValues[0]=34;
-    rampHeatValues[1]=52; rampHeatFanValues[1]=56;
+    rampHeatValues[1]=54; rampHeatFanValues[1]=56;
     rampHeatValues[2]=78; rampHeatFanValues[2]=68;
     rampHeatValues[3]=88; rampHeatFanValues[3]=78;
+    *compareOffset = 0.2;
+    *nearDestHeaterValue = 62; // 62
+    *ventilationHeaterValue = 54;  // 54 
   }
 
-  if(dryDestTemp > 40 && dryDestTemp <= 52) {
+  if(dryDestTemp > 40 && dryDestTemp <= 45) {   
     rampHeatValues[0]=35; rampHeatFanValues[0]=40;
     rampHeatValues[1]=56; rampHeatFanValues[1]=64;
+    rampHeatValues[2]=68; rampHeatFanValues[2]=72;
+    rampHeatValues[3]=88; rampHeatFanValues[3]=82;
+    *compareOffset = 0.2;
+    *nearDestHeaterValue = 66; // may be 68
+    *ventilationHeaterValue = 56;    
+  }
+
+  if(dryDestTemp > 45 && dryDestTemp <= 50) {   // set is fine for 45-50 degrees
+    rampHeatValues[0]=35; rampHeatFanValues[0]=40;
+    rampHeatValues[1]=58; rampHeatFanValues[1]=64;
     rampHeatValues[2]=82; rampHeatFanValues[2]=72;
-    rampHeatValues[3]=96; rampHeatFanValues[3]=82;
+    rampHeatValues[3]=96; rampHeatFanValues[3]=84;
+    *compareOffset = 0.2;
+    *nearDestHeaterValue = 70;
+    *ventilationHeaterValue = 60;    
+  }
+
+  if(dryDestTemp > 50 ) {   
+    rampHeatValues[0]=45; rampHeatFanValues[0]=50;
+    rampHeatValues[1]=65; rampHeatFanValues[1]=64;
+    rampHeatValues[2]=86; rampHeatFanValues[2]=72;
+    rampHeatValues[3]=98; rampHeatFanValues[3]=88;
+    *compareOffset = 0.2;
+    *nearDestHeaterValue = 75;
+    *ventilationHeaterValue = 65;    
   }
 }
 
@@ -678,7 +749,7 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
  *
  * Controlling the drying process with heating and fresh air.
  * 
- * param uint8_t doState: force action from extern
+ * param uint8_t doState: force action from external caller
  * param float aktTemperature: actual temperature given from extern
  */
  void dryController(uint8_t doState, float aktTemperature)
@@ -688,9 +759,14 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
    static uint8_t rampSecCounter=0;
    static int     airExChgOneMinuteCounter=6000; // Controller is called 100 times every second, 6000 counts equals 1 minute
    static uint8_t airExChgMinutesCounter=0;
+
    // for different temperature ranges we need different power for heating and fan
+   // don't change the values here. This has no effect. Change the values above in function setHeatupRamp tables
    static uint8_t rampUpHeatPWM[4] = {25, 40,60, 80};
    static uint8_t rampUpFanPWM[4] = {34, 40,60, 74};
+   static float DestCompareOffset = 0.5;      // offset for comparing destination temp
+   static uint8_t NearDestHeaterPWM = 30;     // Heater PWM value near before reaching dest temp
+   static uint8_t VentilationHeaterPWM = 40;  // Heater PWM value during ventilation to avoid to much temp drop
 
    if(doState > 0) {
      DryState = doState;
@@ -704,10 +780,7 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
           
         }
      }
-
-
    }
-
 
    switch(DryState) {
      case DST_STARTUP:
@@ -715,7 +788,7 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
         rampSecCounter=0;
         airExChgOneMinuteCounter=6000;
         airExChgMinutesCounter=0;
-        setHeatupRamp(rampUpHeatPWM, rampUpFanPWM, DryTemperature);
+        setHeatupRamp(rampUpHeatPWM, rampUpFanPWM, DryTemperature, &DestCompareOffset, &NearDestHeaterPWM, &VentilationHeaterPWM);
         DryState = DST_RAMPUP_HEATER;
         break;
 
@@ -745,25 +818,17 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
      case DST_WAIT_DEST_TEMP:
         if(oneSecondCounter > 0) {
           oneSecondCounter--;
-        } else {
-           if(aktTemperature + 0.5 >= DryTemperature && DryTemperature <= 32) {
-            SetPWMRate(HEATING_PIN, rampUpHeatPWM[1]);            
-          } 
-
-          if(aktTemperature + 0.5 >= DryTemperature && DryTemperature <= 35) {
-            SetPWMRate(HEATING_PIN, rampUpHeatPWM[1]);            
-          } 
-
-          if(aktTemperature + 0.2 >= DryTemperature && DryTemperature <= 40) {
-            SetPWMRate(HEATING_PIN, rampUpHeatPWM[2]);            
-          } 
-            
-          
+        } else { 
+            if(aktTemperature + DestCompareOffset >= DryTemperature) {
+              SetPWMRate(HEATING_PIN, NearDestHeaterPWM);              
+            } else {
+              SetPWMRate(HEATING_PIN, rampUpHeatPWM[3]); // in case of temperature drop, switch heater to high power again
+            }
         }
 
         if(aktTemperature >= DryTemperature) {
-          SetPWMRate(FANHEATING_PIN, rampUpFanPWM[0]);
-          SetPWMRate(HEATING_PIN, 0);   
+          SetPWMRate(FANHEATING_PIN, rampUpFanPWM[0]); // heating fan continue with lower speed. Lowest defined speed for the range
+          SetPWMRate(HEATING_PIN, 0);                  // heater off
           DryState = DST_TEMP_REACHED;         
         }        
         break;        
@@ -772,13 +837,13 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
         if(aktTemperature < DryTemperature) {
           oneSecondCounter=100;
           rampSecCounter=0;
-          DryState = DST_RAMPUP_HEATER;
+          DryState = DST_RAMPUP_HEATER;               // go back to ramp up the heater
         }
 
         if(airExChgMinutesCounter >= AIR_EXCHANGE_MINUTES_INTERVAL) {
           airExChgOneMinuteCounter=2000;  // fresh air for 20 seconds
-          SetPWMRate(FANAIR_PIN, 80);
-          SetPWMRate(HEATING_PIN, rampUpHeatPWM[1]);  // additional power up the heater a bit
+          SetPWMRate(FANAIR_PIN, 80);     // speed for ventilation fan in percent. Adjust value here, if you need more or less
+          SetPWMRate(HEATING_PIN, VentilationHeaterPWM);  // additional power to the heater for smaller temperature drop
           DryState = DST_AIR_EXCHANGE;
         }
         break;
@@ -787,8 +852,9 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
         if(airExChgOneMinuteCounter > 0) {
           airExChgOneMinuteCounter--;
         } else {
-          airExChgOneMinuteCounter = 6000;
+          airExChgOneMinuteCounter = 6000; //set for next count
           airExChgMinutesCounter = 0;
+          SetPWMRate(HEATING_PIN, 0); // heater has to switch off. Otherwise the temp will continue to raise.
           SetPWMRate(FANAIR_PIN, 0);
           DryState = DST_TEMP_REACHED;
         }

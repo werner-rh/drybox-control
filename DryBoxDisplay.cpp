@@ -1,3 +1,4 @@
+#include "Arduino.h"
 /***
  * Project: DryBox Control
  * File   : DryBoxDisplay.cpp
@@ -19,7 +20,7 @@
 
 LiquidCrystal_I2C lcd(0x27,2,1,0,4,5,6,7,3,POSITIVE);
 
-char szVersion[17] = "[    V0.46     ]";
+char szVersion[17] = "";
 
 char szModNames[6][12] = {
   "Temp: 40C",
@@ -45,6 +46,13 @@ void DryBoxDisplay::Setup()
 {
   lcd.begin(16, 2);
   lcd.clear();  
+}
+
+void DryBoxDisplay::SetVersion(const char  *strVersion)
+{
+  strcpy(szVersion, "[    V");
+  strcat(szVersion, strVersion);
+  strcat(szVersion, "     ]");
 }
 
 void DryBoxDisplay::SetBacklight(uint8_t mode)
@@ -190,6 +198,29 @@ void DryBoxDisplay::PrintDestTime(int hour, int minute, uint8_t startPos)
   lcd.print(valBuf);
 }
 
+//lcd.print("-RUN- HFV|     C");
+void DryBoxDisplay::PrintHFVState(boolean heater, boolean heaterfan, boolean ventilation)
+{
+  char szBuf[2] = "";
+  char szOneChar[2] = " ";
+
+  lcd.setCursor(6 , 0);
+  strcpy(szBuf, szOneChar);
+  if(heater == true) strcpy(szBuf, "H");
+  lcd.print(szBuf);
+
+  lcd.setCursor(7 , 0);
+  strcpy(szBuf, szOneChar);
+  if(heaterfan == true) strcpy(szBuf, "F");
+  lcd.print(szBuf);  
+
+  lcd.setCursor(8 , 0);
+  strcpy(szBuf, szOneChar);
+  if(ventilation == true) strcpy(szBuf, "V");
+  lcd.print(szBuf);    
+
+}
+
 void DryBoxDisplay::ScreenOut(uint8_t uiScreenID)
 {
 lcd.clear();
@@ -237,7 +268,9 @@ switch(uiScreenID)
 
   case SCR_RUNNING:
     //lcd.setCursor(0,0);
-    lcd.print("-Running-|     C");
+    //TODO: adjust screen for showing the state of Heater, Heaterfan and Ventilation
+    //lcd.print("-Running-|     C");
+      lcd.print("-RUN- HFV|     C");
     lcd.setCursor(0,1);
     lcd.print("35C h5:30| H   %");    
     break;
