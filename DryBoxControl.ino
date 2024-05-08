@@ -31,7 +31,7 @@
  *
  * D5     - Rotary Encoder Switch
  * D6     - Rotary Encoder DT_pin                 Note: some encoder are different and you may have to change DT and CLK Pin.
- * D7     - Rotary Encoder CLK_pin                      Clockwise spin should increase all values
+ * D7     - Rotary Encoder CLK_pin                      Clockwise spin should increase all values.
  * D8     - Digital in DHT11 sensor
  * D9     - Analog out PWM Fan Air exchange
  * D10    - Analog out PWM Fan Heating
@@ -74,18 +74,18 @@ uint8_t ui10MilliSekCount = 0;
 int encoder_value = 500;
 int last_encoder_value  = 500;
 int EncSwitch = 5;
-int DT_pin = 6;
-int CLK_pin = 7;
+int DT_pin = 6;   //swap lines to change direction on the encoder
+int CLK_pin = 7;  //swap lines to change direction on the encoder
 int DT_pinstate;
 int last_DT_pinstate;
 
-int AirFanSpeed = 100;    // Airexchange Fan Speed in Percent
+int AirFanSpeed = 100;    // Extract Fan Speed in Percent
 int HeatFanSpeed = 50;    // HeatFan Speed in Percent
 int HeatingPower = 25;    // Heating Power in Percent
 
-int testAirFanSpeed = 0;    // Airexchange Fan Speed in Percent
-int testHeatFanSpeed =0;    // HeatFan Speed in Percent
-int testHeatingPower =0;    // Heating Power in Percent
+int testAirFanSpeed = 0;    // Extract Fan Speed in Percent for testing mode
+int testHeatFanSpeed =0;    // HeatFan Speed in Percent for testing mode
+int testHeatingPower =0;    // Heating Power in Percent for testing mode
 
 // default values at startup, if nothing is stored in the eeprom
 int DryTemperature = 35;    // Destination Dry Temperature in degree celsius
@@ -155,11 +155,11 @@ void setup() {
 
   // setup Heating and air 
   pinMode(FANAIR_PIN, OUTPUT);  
-  analogWrite(FANAIR_PIN, 0);            // PWM Fan Airexchange off
+  analogWrite(FANAIR_PIN, 0);            // PWM Extrcat Fan off
   pinMode(FANHEATING_PIN, OUTPUT);  
-  analogWrite(FANHEATING_PIN, 0);            // PWM Fan Heating off
+  analogWrite(FANHEATING_PIN, 0);        // PWM Heating Fan  off
   pinMode(HEATING_PIN, OUTPUT);
-  analogWrite(HEATING_PIN, 0);            // PWM Heating off  
+  analogWrite(HEATING_PIN, 0);           // PWM Heating off  
 
   ReadSettings();
 
@@ -290,8 +290,8 @@ void loop() {
 
     CheckKeyState(&encoderBUTTON_State, EncSwitch);
 
-    // The DHT11 is a little bit slow, but cheap and fine for this project. So we shouldn't
-    // receive values in to fast intervals
+    // The DHT11 is a little slow,. So we shouldn't
+    // receive values too quickly
     if(ui100HzSensorTimer > 0) {
       ui100HzSensorTimer--;
     } else {
@@ -480,7 +480,7 @@ void loop() {
 
       case AST_RUNDRYING:
         // Timer check and display -------------------------------
-        // The active state is called 100 times per second. So 6000 calls are one minute
+        // The active state is called 100 times per second. So 6000 equals one minute
         if(runMinuteTimer > 0) {
           runMinuteTimer--;
         }
@@ -501,7 +501,7 @@ void loop() {
               dryController(DST_TEARDOWN, temperature);
               display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
               AppState = AST_ENDVENTILATION;
-              //add a las fresh air ventilation after drying
+              //add a final fresh air ventilation after drying
               airExChgEndCounter=2000;  // fresh air for 20 seconds
               SetPWMRate(FANAIR_PIN, 80);              
               display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn);
@@ -667,8 +667,8 @@ void loop() {
 
 /***
 * Setup the rampup values. All power values are percentage values.
-* We need different power values depending from the choosed temperature. Currently there are
-* 6 ranges defined. Most importent are the ranges between 40 and 55 degrees.
+* We need different power values depending from the choosen temperatures. Currently there are
+* 6 ranges defined. The most importent are the ranges between 40 and 55 degrees.
 *
 * param uint8_t rampHeatValues[], uint8_t rampHeatFanValues[]  - adress of an array containing 4 values
 * param int dryDestTemp  - destination drying temperature
@@ -679,15 +679,15 @@ void loop() {
 void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dryDestTemp,
                    float *compareOffset, uint8_t *nearDestHeaterValue, uint8_t *ventilationHeaterValue) {
 
-  // we are using the same variables for each temperature range. But depending from the range, they are filled with matching values
+  // we are using the same variables for each temperature range. But depending which range, they are populated with the appropriate values
   if(dryDestTemp <= 32) {
     rampHeatValues[0]=26; rampHeatFanValues[0]=32;    // rampHeatValues[0] - the lowest heater fan value is also used, when destinatiion temp is reached
     rampHeatValues[1]=40; rampHeatFanValues[1]=44;
     rampHeatValues[2]=50; rampHeatFanValues[2]=56;
     rampHeatValues[3]=72; rampHeatFanValues[3]=72;    // rampHeatValues[3] - the last entry is the final value to power the heater and heater fan
-    *compareOffset = 0.5;                             // compareOffset - value below destination temperature, when heater is switched to lower power
+    *compareOffset = 0.5;                             // compareOffset - value below destination temperature, when heater is switched to a lower power
     *nearDestHeaterValue = 44;                        // nearDestHeaterValue - power value for heater near before destination temperature
-                                                      // this two values above should prevent over shoot the destination temp to much
+                                                      // this two values above should help to prevent over shooting the destination temp by to much
     *ventilationHeaterValue = 40;                     // ventilationHeaterValue - power value for heater during ventilation
   }
 
@@ -761,7 +761,7 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
    static uint8_t airExChgMinutesCounter=0;
 
    // for different temperature ranges we need different power for heating and fan
-   // don't change the values here. This has no effect. Change the values in function setHeatupRamp for adjusting
+   // don't change the values here. This has no effect. Change the values above in function setHeatupRamp tables
    static uint8_t rampUpHeatPWM[4] = {25, 40,60, 80};
    static uint8_t rampUpFanPWM[4] = {34, 40,60, 74};
    static float DestCompareOffset = 0.5;      // offset for comparing destination temp
@@ -819,9 +819,11 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
         if(oneSecondCounter > 0) {
           oneSecondCounter--;
         } else { 
-           if(aktTemperature + DestCompareOffset >= DryTemperature) {
-            SetPWMRate(HEATING_PIN, NearDestHeaterPWM);              
-          } 
+            if(aktTemperature + DestCompareOffset >= DryTemperature) {
+              SetPWMRate(HEATING_PIN, NearDestHeaterPWM);              
+            } else {
+              SetPWMRate(HEATING_PIN, rampUpHeatPWM[3]); // in case of temperature drop, switch heater to high power again
+            }
         }
 
         if(aktTemperature >= DryTemperature) {
@@ -840,8 +842,8 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
 
         if(airExChgMinutesCounter >= AIR_EXCHANGE_MINUTES_INTERVAL) {
           airExChgOneMinuteCounter=2000;  // fresh air for 20 seconds
-          SetPWMRate(FANAIR_PIN, 80);     // speed for ventilation fan. Adjust value here, if you need more or less
-          SetPWMRate(HEATING_PIN, VentilationHeaterPWM);  // additional power up the heater a bit for lower temperature drop
+          SetPWMRate(FANAIR_PIN, 80);     // speed for ventilation fan in percent. Adjust value here, if you need more or less
+          SetPWMRate(HEATING_PIN, VentilationHeaterPWM);  // additional power to the heater for smaller temperature drop
           DryState = DST_AIR_EXCHANGE;
         }
         break;
@@ -852,7 +854,7 @@ void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dr
         } else {
           airExChgOneMinuteCounter = 6000; //set for next count
           airExChgMinutesCounter = 0;
-          SetPWMRate(HEATING_PIN, 0); // heater has to switch off. Otherwise the temp will continue to raise up 
+          SetPWMRate(HEATING_PIN, 0); // heater has to switch off. Otherwise the temp will continue to raise.
           SetPWMRate(FANAIR_PIN, 0);
           DryState = DST_TEMP_REACHED;
         }
