@@ -20,7 +20,7 @@
 
 #include <Arduino.h>
 
-#define APP_VERSION "0.47"
+#define APP_VERSION "0.48"
 
 // Defines Pins
 #define FANAIR_PIN 9
@@ -77,7 +77,8 @@ void ReadEncoder();
 void EncoderValueChange(int * valToModify, int rangeMin, int rangeMax);
 boolean IsPWMStateOn(int pwmValue);
 void SetPWMRate(uint8_t pin, int ratePercent);
-void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dryDestTemp);
+void setHeatupRamp(uint8_t rampHeatValues[], uint8_t rampHeatFanValues[], int dryDestTemp,
+                   float *compareOffset, uint8_t *nearDestHeaterValue, uint8_t *ventilationHeaterValue);
 void dryController(uint8_t doState, float aktTemperature);
 
 #endif

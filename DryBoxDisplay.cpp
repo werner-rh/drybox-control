@@ -199,10 +199,15 @@ void DryBoxDisplay::PrintDestTime(int hour, int minute, uint8_t startPos)
 }
 
 //lcd.print("-RUN- HFV|     C");
-void DryBoxDisplay::PrintHFVState(boolean heater, boolean heaterfan, boolean ventilation)
+void DryBoxDisplay::PrintHFVState(boolean heater, boolean heaterfan, boolean ventilation, boolean turbomode)
 {
   char szBuf[2] = "";
   char szOneChar[2] = " ";
+
+  lcd.setCursor(5 , 0);
+  strcpy(szBuf, szOneChar);
+  if(turbomode == true) strcpy(szBuf, "T");
+  lcd.print(szBuf);
 
   lcd.setCursor(6 , 0);
   strcpy(szBuf, szOneChar);
