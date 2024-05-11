@@ -35,6 +35,8 @@ float compareOffsetTurboMode;
 uint8_t ventilationHeaterPWM;
 uint8_t ventilationHeaterFanPWM;
 uint8_t ventilationFanPWN;
+uint8_t airExtractionTime;
+uint8_t finalAirExtractionTime;
 
 /* Methods */
 HeatingData();

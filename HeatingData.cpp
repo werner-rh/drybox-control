@@ -25,7 +25,7 @@ HeatingData::HeatingData()
   we are using the same variables for each temperature range. But depending which range, 
   they are populated with the appropriate values.
 
-  The method is initializing following member variables. All values, except compareOffset and compareOffsetTurboMode, 
+  The method is initializing following member variables. All values, except compareOffset, compareOffsetTurboMode and airExtractionTime, 
   are percentage values for the PWM to power heater or fan. compareOffset and compareOffsetTurboMode are float temperature
   value in degree celsius.
 
@@ -41,11 +41,15 @@ HeatingData::HeatingData()
   uint8_t ventilationHeaterPWM        - power value for heater during ventilation
   uint8_t ventilationHeaterFanPWM     - power value for heater fan during ventilation
   uint8_t ventilationFanPWN           - power value for ventilation fan during ventilation
+  uint8_t airExtractionTime;          - air extraction time in seconds, done in intervalls during drying process
+  uint8_t finalAirExtractionTime      - final air extraction time in seconds after finishing drying process
 */
 void HeatingData::SetupHeatingValues(int dryDestTemp)
 {
 
   ventilationFanPWN = 80;       // for the ventilation fan we only need one value for all
+  airExtractionTime = 20;
+  finalAirExtractionTime = 30;
   
   /*-- range up to 32 degree celsius -- */
   if(dryDestTemp <= 32) {
@@ -53,12 +57,12 @@ void HeatingData::SetupHeatingValues(int dryDestTemp)
     defaultHeaterFanPWM = 72;
     nearDestHeaterPWM = 44;
     lowHeaterFanPWM = 32; 
-    turboHeaterPWM = 88;
-    turboHeaterFanPWM = 78;
+    turboHeaterPWM = 92;
+    turboHeaterFanPWM = 90;
     compareOffset = 0.5;
     compareOffsetTurboMode = 4.0;
     ventilationHeaterPWM = 40;
-    ventilationHeaterFanPWM = 32;
+    ventilationHeaterFanPWM = 52;
   }
 
   /*-- range over 32 up to 35 degree celsius -- */
@@ -67,12 +71,12 @@ void HeatingData::SetupHeatingValues(int dryDestTemp)
     defaultHeaterFanPWM = 76;
     nearDestHeaterPWM = 58;
     lowHeaterFanPWM = 34; 
-    turboHeaterPWM = 88;
-    turboHeaterFanPWM = 78;
+    turboHeaterPWM = 94;
+    turboHeaterFanPWM = 90;
     compareOffset = 0.5;
     compareOffsetTurboMode = 4.0;
     ventilationHeaterPWM = 46; //
-    ventilationHeaterFanPWM = 34;
+    ventilationHeaterFanPWM = 54;
   }
 
   /*-- range over 35 up to 40 degree celsius -- */
@@ -80,9 +84,9 @@ void HeatingData::SetupHeatingValues(int dryDestTemp)
     defaultHeaterPWM = 88;
     defaultHeaterFanPWM = 78;
     nearDestHeaterPWM = 62;
-    lowHeaterFanPWM = 34; 
-    turboHeaterPWM = 94;
-    turboHeaterFanPWM = 80;
+    lowHeaterFanPWM = 40; 
+    turboHeaterPWM = 98;
+    turboHeaterFanPWM = 90;
     compareOffset = 0.3;
     compareOffsetTurboMode = 3.0;
     ventilationHeaterPWM = 54;
@@ -94,12 +98,12 @@ void HeatingData::SetupHeatingValues(int dryDestTemp)
     defaultHeaterPWM = 88;
     defaultHeaterFanPWM = 82;
     nearDestHeaterPWM = 66;
-    lowHeaterFanPWM = 40; 
+    lowHeaterFanPWM = 44; 
     turboHeaterPWM = 98;
-    turboHeaterFanPWM = 84;
+    turboHeaterFanPWM = 90;
     compareOffset = 0.2;
     compareOffsetTurboMode = 2.0;
-    ventilationHeaterPWM = 56;
+    ventilationHeaterPWM = 60; // 56
     ventilationHeaterFanPWM = 40;
   }
 
@@ -110,7 +114,7 @@ void HeatingData::SetupHeatingValues(int dryDestTemp)
     nearDestHeaterPWM = 72;
     lowHeaterFanPWM = 50; 
     turboHeaterPWM = 98;
-    turboHeaterFanPWM = 84;
+    turboHeaterFanPWM = 90;
     compareOffset = 0.2;
     compareOffsetTurboMode = 2.0;
     ventilationHeaterPWM = 70;
@@ -124,7 +128,7 @@ void HeatingData::SetupHeatingValues(int dryDestTemp)
     nearDestHeaterPWM = 75;
     lowHeaterFanPWM = 60; 
     turboHeaterPWM = 99;
-    turboHeaterFanPWM = 88;
+    turboHeaterFanPWM = 90;
     compareOffset = 0.2;
     compareOffsetTurboMode = 2.0;
     ventilationHeaterPWM = 78;    // 75

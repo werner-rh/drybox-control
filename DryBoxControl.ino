@@ -95,6 +95,10 @@ int DryTime_Minutes = 30;
 int curDryTime_Hours = 1;
 int curDryTime_Minutes = 30;
 
+//-- adjustable seetings for drying process, stored in HeatingData class
+HeatingData heatingData;    // see HeatingData class
+
+
 //-- State var for rotary encoder weitch  ----
 uint8_t encoderBUTTON_State=0;
 
@@ -503,8 +507,8 @@ void loop() {
               dryController(DST_TEARDOWN, temperature);
               display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn, turboMode);
               AppState = AST_ENDVENTILATION;
-              //add a final fresh air ventilation after drying
-              airExChgEndCounter=2000;  // fresh air for 20 seconds
+              //final fresh air ventilation after drying
+              airExChgEndCounter = (int) heatingData.finalAirExtractionTime * 100;  // fresh air for defined amount of seconds
               SetPWMRate(FANAIR_PIN, 80);              
               display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn, turboMode);
             }
@@ -683,7 +687,7 @@ void loop() {
    static int     airExChgOneMinuteCounter=6000; // Controller is called 100 times every second, 6000 counts equals 1 minute
    static uint8_t airExChgMinutesCounter=0;
 
-   static HeatingData heatingData;    // see HeatingData class
+   //static HeatingData heatingData;    // see HeatingData class
 
    if(doState > 0) {
      DryState = doState;
@@ -774,7 +778,7 @@ void loop() {
         }
 
         if(airExChgMinutesCounter >= AIR_EXCHANGE_MINUTES_INTERVAL) {
-          airExChgOneMinuteCounter=2000;  // fresh air for 20 seconds
+          airExChgOneMinuteCounter = (int) heatingData.airExtractionTime * 100;  // fresh air for 20 seconds
           SetPWMRate(FANAIR_PIN, heatingData.ventilationFanPWN);     // speed for ventilation fan in percent. Adjust value here, if you need more or less
           SetPWMRate(HEATING_PIN, heatingData.ventilationHeaterPWM);  // additional power to the heater for smaller temperature drop
           DryState = DST_AIR_EXCHANGE;

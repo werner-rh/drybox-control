@@ -6,6 +6,7 @@ All notable changes for this project will be documented in this file
 - Refactoring Heating data. All values for heating power and heater fan speed are handled in an own class 
 ### Added
 - Turbo mode for faster heating up in the lower ranges
+- values for ventialtion time and final ventilation time
 
 ## [0.47] - 2024-05-05
 ### changed
