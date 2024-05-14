@@ -37,6 +37,7 @@ uint8_t ventilationHeaterFanPWM;
 uint8_t ventilationFanPWN;
 uint8_t airExtractionTime;
 uint8_t finalAirExtractionTime;
+uint8_t airExchangeIntervallMinutes;
 
 /* Methods */
 HeatingData();
