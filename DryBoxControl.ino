@@ -682,7 +682,7 @@ void loop() {
  void dryController(uint8_t doState, float aktTemperature)
  {
    static uint8_t DryState=0;
-   static uint8_t oneSecondCounter=100; // The Controller is called 100 times every second
+   static int oneSecondCounter=100; // The Controller is called 100 times every second
    static uint8_t rampSecCounter=0;
    static int     airExChgOneMinuteCounter=6000; // Controller is called 100 times every second, 6000 counts equals 1 minute
    static uint8_t airExChgMinutesCounter=0;
@@ -777,7 +777,7 @@ void loop() {
           DryState = DST_RAMPUP_HEATER;               // go back to ramp up the heater
         }
 
-        if(airExChgMinutesCounter >= AIR_EXCHANGE_MINUTES_INTERVAL) {
+        if(airExChgMinutesCounter >= heatingData.airExchangeIntervallMinutes) {
           airExChgOneMinuteCounter = (int) heatingData.airExtractionTime * 100;  // fresh air for 20 seconds
           SetPWMRate(FANAIR_PIN, heatingData.ventilationFanPWN);     // speed for ventilation fan in percent. Adjust value here, if you need more or less
           SetPWMRate(HEATING_PIN, heatingData.ventilationHeaterPWM);  // additional power to the heater for smaller temperature drop

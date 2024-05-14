@@ -7,6 +7,7 @@ All notable changes for this project will be documented in this file
 ### Added
 - Turbo mode for faster heating up in the lower ranges
 - values for ventialtion time and final ventilation time
+- replaced fix define for air exchange intervall with value in HeatingData
 
 ## [0.47] - 2024-05-05
 ### changed

@@ -67,7 +67,6 @@
 #define DST_BREAK            40
 #define DST_CONTINUE         41
 
-#define AIR_EXCHANGE_MINUTES_INTERVAL 4
 
 // Prototypen in CameraSlider.ino ------------------------------------
 
