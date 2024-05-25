@@ -56,7 +56,7 @@ public:
     void PrintPercentValue(int pValue);
     void PrintDestTemp(int dvalue, uint8_t startPos);
     void PrintDestTime(int hour, int minute, uint8_t startPos);
-    void PrintHFVState(boolean heater, boolean heaterfan, boolean ventilation);
+    void PrintHFVState(boolean heater, boolean heaterfan, boolean ventilation, boolean turbomode);
     void ScreenOut(uint8_t uiScreenID); 
 
 };

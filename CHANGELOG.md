@@ -1,6 +1,14 @@
 # Changelog
 All notable changes for this project will be documented in this file
 
+## [0.48] - 2024-05-08
+### changed
+- Refactoring Heating data. All values for heating power and heater fan speed are handled in an own class 
+### Added
+- Turbo mode for faster heating up in the lower ranges
+- values for ventialtion time and final ventilation time
+- replaced fix define for air exchange intervall with value in HeatingData
+
 ## [0.47] - 2024-05-05
 ### changed
 - bugfix in function dryController(). Heater now is shut down after ventilation.
