@@ -226,6 +226,14 @@ void DryBoxDisplay::PrintHFVState(boolean heater, boolean heaterfan, boolean ven
 
 }
 
+void DryBoxDisplay::PrintError(const char* errorMsg) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("ERROR:");
+    lcd.setCursor(0, 1);
+    lcd.print(errorMsg);
+}
+
 void DryBoxDisplay::ScreenOut(uint8_t uiScreenID)
 {
 lcd.clear();
@@ -291,6 +299,11 @@ switch(uiScreenID)
     lcd.print("-Testing-|     C");
     lcd.setCursor(0,1);
     lcd.print("HFan  0% | H   %");    
-    break;  
+    break;
+
+  case SCR_ERROR:
+    lcd.setCursor(0, 0);
+    lcd.print("Error Screen");
+    break;
   }
 }
