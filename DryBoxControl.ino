@@ -311,7 +311,6 @@ void loop() {
         display.ScreenOut(SCR_ERROR); 
         display.PrintError("DHT Sensor Error"); // Display error message
         AppState = AST_IDLE; // Transition to a safe state
-        //return; // Exit the loop to ensure the drying process is stopped
       }
       if(AppState == AST_MODE_SELECT || AppState == AST_RUNDRYING || AppState == AST_TESTMODE) {
         display.PrintTHValue(temperature, humidity);
