@@ -1,6 +1,10 @@
 # Changelog
 All notable changes for this project will be documented in this file
 
+## [0.49] - 2024-06-18
+### Added
+- Handling sensor error. If sensor fails during drying cycle, then drying process will be stopped and error message appear on the screen.
+  
 ## [0.48] - 2024-05-08
 ### changed
 - Refactoring Heating data. All values for heating power and heater fan speed are handled in an own class 
