@@ -26,7 +26,7 @@
 
  * D2     - not used
  * D1     - not used
- * D3     - not used
+ * D3     - Tachometer pin
  * D4     - not used
  *
  * D5     - Rotary Encoder Switch
@@ -68,6 +68,16 @@
 #define DHTPIN 8        // Digital pin connected to the DHT sensor
 #define DHTTYPE DHT11   // chose the DHT type you are using
 //#define DHTTYPE DHT22 
+
+// Define the tachometer pin
+#define FAN_PIN 3 // Pin where the fan's tachometer output is connected
+bool haveTachometer = false;
+int tRPM = 300;  //Threshold of fan rpm error
+volatile int rpmCounter = 0; // Counter for the tachometer pulses
+int rpm = 0;
+bool isFunfails = false;
+unsigned long lastMillis = 0; // Variable to store the last time the RPM was calculated
+const unsigned long interval = 1000; // Interval at which to calculate RPM (1 second)
 
 volatile uint8_t B100HzToggle = 0;  // 100 Hertz Signal
 uint8_t ui10MilliSekCount = 0;
@@ -152,6 +162,10 @@ SIGNAL(TIMER0_COMPA_vect)
 }
 
 void setup() {
+  
+  //setup fan tachometer
+  pinMode(FAN_PIN, INPUT_PULLUP); // Set the tachometer pin as input with internal pull-up resistor
+  attachInterrupt(digitalPinToInterrupt(FAN_PIN), countPulse, FALLING); // Attach an interrupt to count the pulses
   
   // setup Rotary encoder
   pinMode (DT_pin, INPUT);
@@ -255,6 +269,32 @@ void SetPWMRate(uint8_t pin, int ratePercent)
   }
 }
 
+void calculateRPM() {
+  unsigned long currentMillis = millis(); // Get the current time
+  
+  if (currentMillis - lastMillis >= interval) {
+    // One second has passed, calculate the RPM
+    noInterrupts(); // Disable interrupts temporarily
+    int rpmReading = rpmCounter; // Copy the pulse count
+    rpmCounter = 0; // Reset the pulse count
+    interrupts(); // Re-enable interrupts
+    
+    // Calculate RPM: 
+    // Fan gives 2 pulses per revolution (for typical 3-pin fans)
+    rpm = (rpmReading * 30); // 60 seconds per minute / 2 pulses per revolution = 30
+    
+    if (rpm < tRPM) {
+      isFunfails = true;
+    } else {
+      isFunfails = false;
+    }
+    lastMillis = currentMillis; // Update the last time the RPM was calculated
+  }
+}
+
+void countPulse() {
+  rpmCounter++;
+}
 
 // Main loop -----------------------------------------------------------
 void loop() {
@@ -304,17 +344,35 @@ void loop() {
       ui100HzSensorTimer = 200;
       humidity = dht.readHumidity();
       temperature = dht.readTemperature();
-      // Check for NaN values
-      if (isnan(humidity) || isnan(temperature)) {
-        // Stop the drying process if NaN values are detected
-        dryController(DST_TEARDOWN, temperature);
-        display.ScreenOut(SCR_ERROR); 
-        display.PrintError("DHT Sensor Error"); // Display error message
-        AppState = AST_IDLE; // Transition to a safe state
+
+      if (AppState == AST_RUNDRYING){
+        // Check for NaN values
+        if (isnan(humidity) || isnan(temperature)) {
+          // Stop the drying process if NaN values are detected
+          dryController(DST_TEARDOWN, temperature);
+          display.ScreenOut(SCR_ERROR); 
+          display.PrintError("DHT Sensor Error"); // Display error message
+          AppState = AST_IDLE; // Transition to a safe state
+        }
       }
       if(AppState == AST_MODE_SELECT || AppState == AST_RUNDRYING || AppState == AST_TESTMODE) {
         display.PrintTHValue(temperature, humidity);
       }
+    }
+
+    //Read fan tachometer
+    if (AppState == AST_RUNDRYING)
+    {
+      if (haveTachometer)
+        { 
+          calculateRPM();
+          if (isFunfails)
+          {
+            display.ScreenOut(SCR_ERROR); 
+            display.PrintError("FAN at low RPM!"); // Display error message
+            AppState = AST_IDLE; // Transition to a safe state
+          }
+        }
     }
 
     // App-State-Machine processing and step through
@@ -340,7 +398,7 @@ void loop() {
 
       case AST_MODE_SELECT:
         oldModeNo = aktModeNo;    
-        EncoderValueChange(&aktModeNo, 1, 6);     
+        EncoderValueChange(&aktModeNo, 1, 7);     
         if(oldModeNo != aktModeNo)  // there is a change
         {
           display.updateModSelect(aktModeNo);
@@ -349,7 +407,9 @@ void loop() {
           if(aktModeNo == 2)
             display.PrintDestTime(DryTime_Hours, DryTime_Minutes, 6);
         }         
-
+        if(aktModeNo == 7)
+            display.FanRPM(rpm);  
+        
         if(encoderBUTTON_State == 1 && aktModeNo == SELMOD_DRYTEMP)  // encoder switch pressed, set temperature
         {
           display.ScreenOut(SCR_SETTEMP);
