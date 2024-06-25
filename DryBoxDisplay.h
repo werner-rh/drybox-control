@@ -60,5 +60,6 @@ public:
     void PrintHFVState(boolean heater, boolean heaterfan, boolean ventilation, boolean turbomode);
     void ScreenOut(uint8_t uiScreenID);
     void PrintError(const char* errorMsg);
+    void FanRPM(int rpm);
 
 };
