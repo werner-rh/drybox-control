@@ -360,19 +360,20 @@ void loop() {
       }
     }
 
-    //Read fan tachometer
-    if (AppState == AST_RUNDRYING)
-    {
-      if (haveTachometer)
-        { 
-          calculateRPM();
-          if (isFunfails)
-          {
-            display.ScreenOut(SCR_ERROR); 
-            display.PrintError("FAN at low RPM!"); // Display error message
-            AppState = AST_IDLE; // Transition to a safe state
-          }
+    //Read fan tachometer    
+    if (haveTachometer)
+    { 
+      calculateRPM();
+      if (AppState == AST_RUNDRYING)
+      {
+        if (isFunfails)
+        {
+          display.ScreenOut(SCR_ERROR); 
+          display.PrintError("FAN at low RPM!"); // Display error message
+          AppState = AST_IDLE; // Transition to a safe state
+          isFunfails = false;
         }
+      }
     }
 
     // App-State-Machine processing and step through
