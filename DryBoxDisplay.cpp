@@ -22,13 +22,14 @@ LiquidCrystal_I2C lcd(0x27,2,1,0,4,5,6,7,3,POSITIVE);
 
 char szVersion[17] = "";
 
-char szModNames[6][12] = {
+char szModNames[7][12] = {
   "Temp: 40C",
   "Time: 0:00",
   "-> Start",
   "-> Save",
   "-> Version",
-  "-> Test"
+  "-> Test",
+  "RPM"
 };
 
 char szTestNames[4][12] = {
@@ -160,6 +161,13 @@ void DryBoxDisplay::PrintPercentValue(int pValue)
   lcd.setCursor(6,1);
 }
 
+void DryBoxDisplay::FanRPM(int rpm)
+{
+  lcd.setCursor(4, 1);
+  lcd.print("     ");
+  lcd.setCursor(4, 1);
+  lcd.print(rpm);
+}
 
 void DryBoxDisplay::PrintDestTemp(int dValue, uint8_t startPos)
 {
