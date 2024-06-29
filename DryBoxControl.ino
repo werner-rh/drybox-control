@@ -75,7 +75,8 @@ bool haveTachometer = false;
 int tRPM = 300;  //Threshold of fan rpm error
 volatile int rpmCounter = 0; // Counter for the tachometer pulses
 int rpm = 0;
-bool isFunfails = false;
+bool rpmUpdate = false;
+bool isFanfails = false;
 unsigned long lastMillis = 0; // Variable to store the last time the RPM was calculated
 const unsigned long interval = 1000; // Interval at which to calculate RPM (1 second)
 
@@ -282,11 +283,11 @@ void calculateRPM() {
     // Calculate RPM: 
     // Fan gives 2 pulses per revolution (for typical 3-pin fans)
     rpm = (rpmReading * 30); // 60 seconds per minute / 2 pulses per revolution = 30
-    
+    rpmUpdate = true;
     if (rpm < tRPM) {
-      isFunfails = true;
+      isFanfails = true;
     } else {
-      isFunfails = false;
+      isFanfails = false;
     }
     lastMillis = currentMillis; // Update the last time the RPM was calculated
   }
@@ -364,15 +365,13 @@ void loop() {
     if (haveTachometer)
     { 
       calculateRPM();
-      if (AppState == AST_RUNDRYING)
+      if (isFanfails && AppState == AST_RUNDRYING)
       {
-        if (isFunfails)
-        {
-          display.ScreenOut(SCR_ERROR); 
-          display.PrintError("FAN at low RPM!"); // Display error message
-          AppState = AST_IDLE; // Transition to a safe state
-          isFunfails = false;
-        }
+        dryController(DST_TEARDOWN, temperature);
+        display.ScreenOut(SCR_ERROR); 
+        display.PrintError("FAN at low RPM!"); // Display error message
+        AppState = AST_IDLE; // Transition to a safe state
+        isFanfails = false;        
       }
     }
 
@@ -408,8 +407,10 @@ void loop() {
           if(aktModeNo == 2)
             display.PrintDestTime(DryTime_Hours, DryTime_Minutes, 6);
         }         
-        if(aktModeNo == 7)
-            display.FanRPM(rpm);  
+        if(aktModeNo == 7 && haveTachometer && rpmUpdate){
+            display.FanRPM(rpm);
+            rpmUpdate = false; 
+        }  
         
         if(encoderBUTTON_State == 1 && aktModeNo == SELMOD_DRYTEMP)  // encoder switch pressed, set temperature
         {
