@@ -591,7 +591,7 @@ void loop() {
 
       case AST_ED_DRYHOUR:
         oldTimeVal = DryTime_Hours;
-        EncoderValueChange(&DryTime_Hours, 0, 9, 1, false);
+        EncoderValueChange(&DryTime_Hours, 0, 99, 1, false);
         if(oldTimeVal != DryTime_Hours)
         {
           display.PrintDestTime(DryTime_Hours, DryTime_Minutes, 0);
