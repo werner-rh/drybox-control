@@ -71,8 +71,7 @@
 
 // Define the tachometer pin
 #define FAN_PIN 3 // Pin where the fan's tachometer output is connected
-bool haveTachometer = false;
-int tRPM = 300;  //Threshold of fan rpm error
+int tRPM = -1;  //Threshold of fan rpm error. -1 == Off feature
 volatile int rpmCounter = 0; // Counter for the tachometer pulses
 int rpm = 0;
 bool rpmUpdate = false;
@@ -640,8 +639,6 @@ void loop() {
           if(curDryTime_Minutes > 0) {
             curDryTime_Minutes--;
             display.PrintHFVState(temperature, humidity);
-																		   
-               
           } else {
             if(curDryTime_Hours > 0) {
               curDryTime_Hours--;
@@ -701,9 +698,7 @@ void loop() {
           dryController(0, temperature);
           AppState = AST_RUNDRYING;
           display.ScreenOut(SCR_RUNNING);
-          display.PrintHFVState(temperature, humidity);         
-												   
-																		 
+          display.PrintHFVState(temperature, humidity);  											 
         }    
 
         if(encoderBUTTON_State == 1 && aktBreakModNo == 2) // stop
