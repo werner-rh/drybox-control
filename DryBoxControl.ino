@@ -321,7 +321,7 @@ void RollingMessage(boolean StateHeaterOn, boolean StateHeaterFanOn, boolean Sta
   {
     char rpmBuf[6];
     strcat(buf, ", PTC FAN RPM = ");
-    itoa(tRPM, rpmBuf, 10);
+    itoa(rpm, rpmBuf, 10);
     strcat(buf, rpmBuf);
   }
   //Add more information if needed. Increase buf size accordingly.
