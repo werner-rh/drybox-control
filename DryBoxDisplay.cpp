@@ -237,23 +237,34 @@ void DryBoxDisplay::PrintDestRPM(int dValue, uint8_t startPos)
 
 void DryBoxDisplay::PrintDestTime(int hour, int minute, uint8_t startPos)
 {
-  char buf[4]="";
-  char valBuf[6]="";
-  int l;
-  lcd.setCursor(startPos, 1);
-  lcd.print("     "); 
-  
-  // convert hour
-  strcpy(valBuf,"0:00");
-  itoa(hour, buf,10);
-  valBuf[0] = buf[0];    // copy a single digit into the outbuf
+    char buf[4] = "";
+    String valStr = "";
+    int l;
 
-  // convert minutes
-  itoa(minute, buf,10);
-  l = strlen(buf);  
-  strcpy(&valBuf[2+2-l], buf);  
-  lcd.setCursor(0 + startPos,1);
-  lcd.print(valBuf);
+    lcd.setCursor(startPos, 1);
+    lcd.print("     "); 
+
+    // Convert hour
+    itoa(hour, buf, 10);
+    valStr += buf; // Append hour
+
+    // Add colon
+    valStr += ":";
+
+    // Convert minutes
+    itoa(minute, buf, 10);
+    if (minute < 10) {
+        valStr += "0"; 
+    }
+    valStr += buf; 
+
+    int actualStartPos = startPos;
+    if (hour < 10) {
+        actualStartPos -= 1;
+    }
+
+    lcd.setCursor(actualStartPos, 1);
+    lcd.print(valStr);
 }
 void DryBoxDisplay::PrintHFVState(int temp, int humid) {
     lcd.setCursor(0, 0);
