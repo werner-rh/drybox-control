@@ -1,7 +1,7 @@
 DryBox dryController
 ===
 
-## Version 0.5
+## Version 1.0
 
 ## Requirements
 - Arduino IDE 1.8.2 or higher
