@@ -118,8 +118,6 @@ boolean StateHeaterFanOn = false;
 boolean StateVentilationOn = false;
 boolean turboMode = false;
 
-char scrolMsg[64];
-
 DryBoxDisplay display;
 DHT dht(DHTPIN, DHTTYPE);
 
@@ -307,25 +305,33 @@ void calculateRPM() {
   }
 }
 
-void RollingMessage(boolean StateHeaterOn, boolean StateHeaterFanOn, boolean StateVentilationOn, boolean turboMode, int curDryTime_Hours, int curDryTime_Minutes)
+char* RollingMessage(boolean StateHeaterOn, boolean StateHeaterFanOn, boolean StateVentilationOn, boolean turboMode, int curDryTime_Hours, int curDryTime_Minutes)
 {
-  char buf[100];  
-  sprintf(buf, " Heater: %s, Fan: %s, Vent: %s, Turbo: %s, Time: %02d:%02d",
-          (StateHeaterOn ? "On" : "Off"),
-          (StateHeaterFanOn ? "On" : "Off"),
-          (StateVentilationOn ? "On" : "Off"),
-          (turboMode ? "On" : "Off"),
-          curDryTime_Hours,
-          curDryTime_Minutes);
-  if (tRPM != -1) 
-  {
-    char rpmBuf[6];
-    strcat(buf, ", PTC FAN RPM = ");
-    itoa(rpm, rpmBuf, 10);
-    strcat(buf, rpmBuf);
-  }
-  //Add more information if needed. Increase buf size accordingly.
-  strcpy(scrolMsg, buf);
+    // Allocate enough memory for the buffer
+    char* buf = (char*)malloc(150);  // Adjust size as needed
+    
+    // Check for memory allocation failure
+    if (buf == NULL)
+    {
+        return NULL;
+    }
+    
+    // Create the initial message
+    sprintf(buf, " Heater: %s, Fan: %s, Vent: %s, Turbo: %s, Time: %02d:%02d",
+            (StateHeaterOn ? "On" : "Off"),
+            (StateHeaterFanOn ? "On" : "Off"),
+            (StateVentilationOn ? "On" : "Off"),
+            (turboMode ? "On" : "Off"),
+            curDryTime_Hours,
+            curDryTime_Minutes);    
+    if (tRPM != -1)
+    {
+        char rpmBuf[20];
+        sprintf(rpmBuf, ", PTC FAN RPM = %d", rpm);
+        strcat(buf, rpmBuf);
+    }
+    //Add more information if needed.    
+    return buf;
 }
 
 void countPulse() {
@@ -345,6 +351,7 @@ void loop() {
   static uint8_t ui100HzSecCounter=0;   // counter for a second
   static uint8_t ui100HzSensorTimer=200;  // read DHT11 sensor every 2 seconds
   static int runMinuteTimer = 6000;
+  static int rDelay = 1;
   static int airExChgEndCounter = 2000;
   static float humidity = 0.0;
   static float temperature = 0.0;
@@ -628,13 +635,25 @@ void loop() {
       case AST_RUNDRYING:
         // Timer check and display -------------------------------
         // The active state is called 100 times per second. So 6000 equals one minute
-        RollingMessage(StateHeaterOn, StateHeaterFanOn, StateVentilationOn, turboMode, curDryTime_Hours, curDryTime_Minutes);       
-        display.DisScrollText(scrolMsg);
+        if(rDelay > 0) //need a small delay or it will break stuff
+          rDelay--;        
+        else 
+        {
+          rDelay = 1;
+          char* scrolMsg = RollingMessage(StateHeaterOn, StateHeaterFanOn, StateVentilationOn, turboMode, curDryTime_Hours, curDryTime_Minutes);
+          if (scrolMsg != NULL) 
+          {
+            display.DisScrollText(scrolMsg);
+            free(scrolMsg);
+          } 
+          else           
+            display.DisScrollText("Memory allocation failed");
+          }
+        
         if(runMinuteTimer > 0) {
           runMinuteTimer--;
         }
         else {
-          RollingMessage(StateHeaterOn, StateHeaterFanOn, StateVentilationOn, turboMode, curDryTime_Hours, curDryTime_Minutes);
           runMinuteTimer = 6000;
           if(curDryTime_Minutes > 0) {
             curDryTime_Minutes--;
