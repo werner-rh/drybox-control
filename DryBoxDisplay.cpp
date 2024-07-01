@@ -205,7 +205,7 @@ void DryBoxDisplay::FanRPM(int rpm)
 
 void DryBoxDisplay::PrintDestTemp(int dValue, uint8_t startPos)
 {
-  char buf[5] = ""; 
+  char buf[7] = ""; 
   lcd.setCursor(startPos, 1);
   lcd.print("     "); 
   lcd.noCursor();
