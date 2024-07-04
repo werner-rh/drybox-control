@@ -1,6 +1,23 @@
 # Changelog
 All notable changes for this project will be documented in this file
 
+## [1.0] - 2024-06-30
+### Added
+New menu for setting fan fail RPM threshold and ability to save it in EEPROM.
+Option to turn off the fan fail-safe feature via the new menu.
+Rolling text display during the drying cycle, providing all necessary information.
+
+### changed
+The program now handles the heater fan differently; it will not turn off at the end of the drying cycle to avoid overheating of the PTC heater.
+Updated the way information is displayed during the drying cycle.
+
+### Fixed
+Bug where the drying cycle wouldn't stop when a fan fail event occurred.
+Miscellaneous
+Minor code adjustments.
+Code cleanup.
+Typo fixes.
+
 ## [0.5] - 2024-06-26
 ### Added
 - Added option to enable PTC fan tachomeret pin. If fan fails, drying process will be stopped and error message appear on the screen.

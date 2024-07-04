@@ -71,11 +71,11 @@
 
 // Define the tachometer pin
 #define FAN_PIN 3 // Pin where the fan's tachometer output is connected
-bool haveTachometer = false;
-int tRPM = 300;  //Threshold of fan rpm error
+int tRPM = -1;  //Threshold of fan rpm error. -1 == Off feature
 volatile int rpmCounter = 0; // Counter for the tachometer pulses
 int rpm = 0;
-bool isFunfails = false;
+bool rpmUpdate = false;
+bool isFanfails = false;
 unsigned long lastMillis = 0; // Variable to store the last time the RPM was calculated
 const unsigned long interval = 1000; // Interval at which to calculate RPM (1 second)
 
@@ -130,6 +130,9 @@ void SaveSettings() {
   EEPROM.write(1, (uint8_t) DryTemperature);
   EEPROM.write(2, (uint8_t) DryTime_Hours);
   EEPROM.write(3, (uint8_t) DryTime_Minutes);
+  uint16_t rpmValue = (uint16_t) tRPM;
+  EEPROM.write(4, (uint8_t) (rpmValue & 0xFF));
+  EEPROM.write(5, (uint8_t) ((rpmValue >> 8) & 0xFF));
 }
 
 
@@ -143,6 +146,10 @@ void ReadSettings() {
     DryTemperature = EEPROM.read(1);
     DryTime_Hours = EEPROM.read(2);
     DryTime_Minutes = EEPROM.read(3);
+    uint8_t lowByte = EEPROM.read(4);
+    uint8_t highByte = EEPROM.read(5);
+    uint16_t rpmValue = lowByte | (highByte << 8);
+    tRPM = (int16_t) rpmValue;
   }
 }
 
@@ -221,24 +228,30 @@ void ReadEncoder() {
  * param int rangeMin: minimum value 
  * param int rangeMax: maximum value
 */
-void EncoderValueChange(int * valToModify, int rangeMin, int rangeMax) {
+void EncoderValueChange(int * valToModify, int rangeMin, int rangeMax, int increment, bool off) {
     int aktValue = * valToModify;
 
     if(last_encoder_value != encoder_value)
     {
 
-      if(encoder_value > last_encoder_value +1)
+      if(encoder_value > last_encoder_value + 1)
       {
         last_encoder_value = encoder_value;
-        if(aktValue < rangeMax)
-          aktValue ++;
+        if(aktValue < rangeMax && (aktValue+increment <= rangeMax))
+        {
+          if (aktValue == -1)
+            aktValue++;
+          aktValue += increment;
+        }
       }
       
-      if(encoder_value +1  < last_encoder_value )
+      if(encoder_value + 1  < last_encoder_value )
       {
         last_encoder_value = encoder_value;
-        if(aktValue > rangeMin)
-        aktValue --;
+        if(aktValue > rangeMin && (aktValue-increment >= rangeMin))
+          aktValue -= increment;
+        else if (off)
+          aktValue = -1;
       }
     }
 
@@ -282,14 +295,43 @@ void calculateRPM() {
     // Calculate RPM: 
     // Fan gives 2 pulses per revolution (for typical 3-pin fans)
     rpm = (rpmReading * 30); // 60 seconds per minute / 2 pulses per revolution = 30
-    
+    rpmUpdate = true;
     if (rpm < tRPM) {
-      isFunfails = true;
+      isFanfails = true;
     } else {
-      isFunfails = false;
+      isFanfails = false;
     }
     lastMillis = currentMillis; // Update the last time the RPM was calculated
   }
+}
+
+char* RollingMessage(boolean StateHeaterOn, boolean StateHeaterFanOn, boolean StateVentilationOn, boolean turboMode, int curDryTime_Hours, int curDryTime_Minutes)
+{
+    // Allocate enough memory for the buffer
+    char* buf = (char*)malloc(150);  // Adjust size as needed
+    
+    // Check for memory allocation failure
+    if (buf == NULL)
+    {
+        return NULL;
+    }
+    
+    // Create the initial message
+    sprintf(buf, " Heater: %s, Fan: %s, Vent: %s, Turbo: %s, Time: %02d:%02d",
+            (StateHeaterOn ? "On" : "Off"),
+            (StateHeaterFanOn ? "On" : "Off"),
+            (StateVentilationOn ? "On" : "Off"),
+            (turboMode ? "On" : "Off"),
+            curDryTime_Hours,
+            curDryTime_Minutes);    
+    if (tRPM != -1)
+    {
+        char rpmBuf[20];
+        sprintf(rpmBuf, ", PTC FAN RPM = %d", rpm);
+        strcat(buf, rpmBuf);
+    }
+    //Add more information if needed.    
+    return buf;
 }
 
 void countPulse() {
@@ -309,6 +351,7 @@ void loop() {
   static uint8_t ui100HzSecCounter=0;   // counter for a second
   static uint8_t ui100HzSensorTimer=200;  // read DHT11 sensor every 2 seconds
   static int runMinuteTimer = 6000;
+  static int rDelay = 1;
   static int airExChgEndCounter = 2000;
   static float humidity = 0.0;
   static float temperature = 0.0;
@@ -320,6 +363,7 @@ void loop() {
   int oldTestModeNo=0;
   int oldTimeEdMode=0;  
   int oldDryTemperature=0;
+  int old_tRPM=0;
   int oldTimeVal=0;
   int oldBreakModNo = 1;
   
@@ -345,7 +389,7 @@ void loop() {
       humidity = dht.readHumidity();
       temperature = dht.readTemperature();
 
-      if (AppState == AST_RUNDRYING){
+     if (AppState == AST_RUNDRYING){
         // Check for NaN values
         if (isnan(humidity) || isnan(temperature)) {
           // Stop the drying process if NaN values are detected
@@ -353,28 +397,27 @@ void loop() {
           display.ScreenOut(SCR_ERROR); 
           display.PrintError("DHT Sensor Error"); // Display error message
           AppState = AST_IDLE; // Transition to a safe state
-        }
+        }        
       }
-      if(AppState == AST_MODE_SELECT || AppState == AST_RUNDRYING || AppState == AST_TESTMODE) {
+      
+      if(AppState == AST_MODE_SELECT || AppState == AST_TESTMODE) {
         display.PrintTHValue(temperature, humidity);
       }
-    }
+    }   
 
     //Read fan tachometer    
-    if (haveTachometer)
+    if (tRPM != -1)
     { 
-      calculateRPM();
-      if (AppState == AST_RUNDRYING)
+      calculateRPM();      
+      if (isFanfails && AppState == AST_RUNDRYING)
       {
-        if (isFunfails)
-        {
-          display.ScreenOut(SCR_ERROR); 
-          display.PrintError("FAN at low RPM!"); // Display error message
-          AppState = AST_IDLE; // Transition to a safe state
-          isFunfails = false;
-        }
-      }
-    }
+        dryController(DST_TEARDOWN, temperature);
+        display.ScreenOut(SCR_ERROR); 
+        display.PrintError("FAN at low RPM!"); // Display error message
+        AppState = AST_IDLE; // Transition to a safe state
+        isFanfails = false;
+      }          
+    }   
 
     // App-State-Machine processing and step through
     switch(AppState) {
@@ -391,15 +434,24 @@ void loop() {
         display.ScreenOut(SCR_MENUBASE);
         display.updateModSelect(aktModeNo);
         if(aktModeNo == 1)
+        {
           display.PrintDestTemp(DryTemperature, 6);
+        }
         if(aktModeNo == 2)
           display.PrintDestTime(DryTime_Hours, DryTime_Minutes, 6);
+        if(aktModeNo == 3)
+          display.PrintDestRPM(tRPM, 6);
         AppState = AST_MODE_SELECT;      
         break;
 
       case AST_MODE_SELECT:
-        oldModeNo = aktModeNo;    
-        EncoderValueChange(&aktModeNo, 1, 7);     
+        oldModeNo = aktModeNo;
+        //adjust menue size
+        if (tRPM != -1)   
+          EncoderValueChange(&aktModeNo, 1, 8, 1, false);
+        else
+          EncoderValueChange(&aktModeNo, 1, 7, 1, false);  
+
         if(oldModeNo != aktModeNo)  // there is a change
         {
           display.updateModSelect(aktModeNo);
@@ -407,9 +459,13 @@ void loop() {
             display.PrintDestTemp(DryTemperature, 6);
           if(aktModeNo == 2)
             display.PrintDestTime(DryTime_Hours, DryTime_Minutes, 6);
-        }         
-        if(aktModeNo == 7)
-            display.FanRPM(rpm);  
+          if(aktModeNo == 3)
+            display.PrintDestRPM(tRPM, 6);          
+        }
+        if(aktModeNo == 8 && rpmUpdate){
+            display.FanRPM(rpm);
+            rpmUpdate = false; 
+        }        
         
         if(encoderBUTTON_State == 1 && aktModeNo == SELMOD_DRYTEMP)  // encoder switch pressed, set temperature
         {
@@ -433,14 +489,21 @@ void loop() {
         if(encoderBUTTON_State == 1 && aktModeNo == SELMOD_DRYSTART)  // encoder switch pressed, start drying
         {
           display.ScreenOut(SCR_RUNNING);
-          display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn, turboMode);
-          display.PrintDestTemp(DryTemperature, 0);
-          display.PrintDestTime(DryTime_Hours, DryTime_Minutes, 5);
+          display.PrintHFVState(temperature, humidity);	
           curDryTime_Hours = DryTime_Hours;
           curDryTime_Minutes = DryTime_Minutes;
           runMinuteTimer = 6000;
           dryController(DST_STARTUP, temperature);
           AppState = AST_RUNDRYING;
+        }
+
+        if(encoderBUTTON_State == 1 && aktModeNo == SELMOD_RPM)  // encoder switch pressed, set RPM
+        {
+          display.ScreenOut(SCR_SETRPM);
+          display.PrintDestRPM(tRPM, 0);
+          display.CursorPos(1, 1);
+          display.CursorOn();
+          AppState = AST_SET_RPM;
         }
 
         // save actual settings
@@ -473,7 +536,7 @@ void loop() {
         oldDryTemperature = DryTemperature;
         // with one Heater, 57° is maximum. For more temperature, a second Heater 
         // and a bigger power supply is necessary.
-        EncoderValueChange(&DryTemperature, 1, 55);   
+        EncoderValueChange(&DryTemperature, 1, 55, 1, false);   
         if(oldDryTemperature != DryTemperature)
         {
           display.PrintDestTemp(DryTemperature, 0);    
@@ -487,9 +550,25 @@ void loop() {
         }
         break;
 
+      case AST_SET_RPM:
+        old_tRPM = tRPM;
+        EncoderValueChange(&tRPM, 0, 1500, 100, true);   
+        if(old_tRPM != tRPM)
+        {
+          display.PrintDestRPM(tRPM, 0);   
+          display.CursorPos(1, 1);      
+        }
+
+        if(encoderBUTTON_State == 1)
+        {
+          display.CursorOff();
+          AppState = AST_PREPARE_SELECT;
+        }
+        break;
+
       case AST_SET_DRYTIME: // select hour, minutes or Return
         oldTimeEdMode = aktTimeEdMode;
-        EncoderValueChange(&aktTimeEdMode, 1, 3);
+        EncoderValueChange(&aktTimeEdMode, 1, 3, 1, false);
         if(oldTimeEdMode != aktTimeEdMode)
         {
           display.SetEdTimeCursorPos(aktTimeEdMode);
@@ -519,7 +598,7 @@ void loop() {
 
       case AST_ED_DRYHOUR:
         oldTimeVal = DryTime_Hours;
-        EncoderValueChange(&DryTime_Hours, 0, 9);
+        EncoderValueChange(&DryTime_Hours, 0, 99, 1, false);
         if(oldTimeVal != DryTime_Hours)
         {
           display.PrintDestTime(DryTime_Hours, DryTime_Minutes, 0);
@@ -537,7 +616,7 @@ void loop() {
 
       case AST_ED_DRYMINUTE:
         oldTimeVal = DryTime_Minutes;
-        EncoderValueChange(&DryTime_Minutes, 0, 59);
+        EncoderValueChange(&DryTime_Minutes, 0, 59, 1, false);
         if(oldTimeVal != DryTime_Minutes)
         {
           display.PrintDestTime(DryTime_Hours, DryTime_Minutes, 0);
@@ -556,6 +635,21 @@ void loop() {
       case AST_RUNDRYING:
         // Timer check and display -------------------------------
         // The active state is called 100 times per second. So 6000 equals one minute
+        if(rDelay > 0) //need a small delay or it will break stuff
+          rDelay--;        
+        else 
+        {
+          rDelay = 1;
+          char* scrolMsg = RollingMessage(StateHeaterOn, StateHeaterFanOn, StateVentilationOn, turboMode, curDryTime_Hours, curDryTime_Minutes);
+          if (scrolMsg != NULL) 
+          {
+            display.DisScrollText(scrolMsg);
+            free(scrolMsg);
+          } 
+          else           
+            display.DisScrollText("Memory allocation failed");
+          }
+        
         if(runMinuteTimer > 0) {
           runMinuteTimer--;
         }
@@ -563,9 +657,7 @@ void loop() {
           runMinuteTimer = 6000;
           if(curDryTime_Minutes > 0) {
             curDryTime_Minutes--;
-            display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn, turboMode);
-            display.PrintDestTime(curDryTime_Hours, curDryTime_Minutes, 5);
-               
+            display.PrintHFVState(temperature, humidity);
           } else {
             if(curDryTime_Hours > 0) {
               curDryTime_Hours--;
@@ -574,12 +666,12 @@ void loop() {
             } else {
               // drying ready
               dryController(DST_TEARDOWN, temperature);
-              display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn, turboMode);
+              display.PrintHFVState(temperature, humidity);
               AppState = AST_ENDVENTILATION;
               //final fresh air ventilation after drying
               airExChgEndCounter = (int) heatingData.finalAirExtractionTime * 100;  // fresh air for defined amount of seconds
               SetPWMRate(FANAIR_PIN, 80);              
-              display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn, turboMode);
+              display.PrintHFVState(temperature, humidity);
             }
           }
         }
@@ -587,7 +679,7 @@ void loop() {
         // Heating control ------------------------------------
         if(AppState == AST_RUNDRYING) {// only while AST_RUNDRYING is active, call dryController
           dryController(0, temperature);
-          display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn, turboMode);
+          display.PrintHFVState(temperature, humidity);
         }
 
         if(encoderBUTTON_State == 1)
@@ -613,7 +705,7 @@ void loop() {
 
       case AST_RUNPAUSE:
         oldBreakModNo = aktBreakModNo;
-        EncoderValueChange(&aktBreakModNo, 1, 2);
+        EncoderValueChange(&aktBreakModNo, 1, 2, 1, false);
         if(oldBreakModNo != aktBreakModNo) {
           display.SetBreakCursorPos(aktBreakModNo);
         }
@@ -625,9 +717,7 @@ void loop() {
           dryController(0, temperature);
           AppState = AST_RUNDRYING;
           display.ScreenOut(SCR_RUNNING);
-          display.PrintHFVState(StateHeaterOn, StateHeaterFanOn, StateVentilationOn, turboMode);
-          display.PrintDestTemp(DryTemperature, 0);
-          display.PrintDestTime(curDryTime_Hours, curDryTime_Minutes, 5);
+          display.PrintHFVState(temperature, humidity);  											 
         }    
 
         if(encoderBUTTON_State == 1 && aktBreakModNo == 2) // stop
@@ -640,7 +730,7 @@ void loop() {
       
       case AST_TESTMODE:
         oldTestModeNo = aktTestModeNo;
-        EncoderValueChange(&aktTestModeNo, 1, 4);
+        EncoderValueChange(&aktTestModeNo, 1, 4, 1, false);
         if(oldTestModeNo != aktTestModeNo) {
           display.updateTestModSelect(aktTestModeNo);
         if(aktTestModeNo == 2)
@@ -684,7 +774,7 @@ void loop() {
       // Fan Speed, on exit switch off Fan
       case AST_FAN_CONTROL:
         oldHeatFanSpeed = testHeatFanSpeed;
-        EncoderValueChange(&testHeatFanSpeed, 0, 99);
+        EncoderValueChange(&testHeatFanSpeed, 0, 99, 1, false);
         if(oldHeatFanSpeed != testHeatFanSpeed) {
           display.PrintPercentValue(testHeatFanSpeed);
           SetPWMRate(FANHEATING_PIN, testHeatFanSpeed);
@@ -701,7 +791,7 @@ void loop() {
 
       case AST_AIR_CONTROL:
         oldAirFanSpeed = testAirFanSpeed;
-        EncoderValueChange(&testAirFanSpeed, 0, 99);
+        EncoderValueChange(&testAirFanSpeed, 0, 99, 1, false);
         if(oldAirFanSpeed != testAirFanSpeed) {
           display.PrintPercentValue(testAirFanSpeed);
           SetPWMRate(FANAIR_PIN, testAirFanSpeed);
@@ -718,7 +808,7 @@ void loop() {
 
       case AST_HEAT_CONTROL:
         oldHeatingPower = testHeatingPower;
-        EncoderValueChange(&testHeatingPower, 0, 99);
+        EncoderValueChange(&testHeatingPower, 0, 99, 1, false);
         if(oldHeatingPower != testHeatingPower) {
           display.PrintPercentValue(testHeatingPower);
           SetPWMRate(HEATING_PIN, testHeatingPower);
@@ -833,7 +923,10 @@ void loop() {
         }
 
         if(aktTemperature >= DryTemperature) {
-          SetPWMRate(FANHEATING_PIN, heatingData.lowHeaterFanPWM); // heating fan continue with lower speed. Lowest defined speed for the range
+          if (tRPM > -1)
+            SetPWMRate(FANHEATING_PIN, heatingData.defaultHeaterPWM); 
+          else
+            SetPWMRate(FANHEATING_PIN, heatingData.lowHeaterFanPWM); // heating fan continue with lower speed. Lowest defined speed for the range
           SetPWMRate(HEATING_PIN, 0);                  // heater off
           DryState = DST_TEMP_REACHED;         
         }        
@@ -867,7 +960,7 @@ void loop() {
         break;
 
       case DST_BREAK:
-        SetPWMRate(FANHEATING_PIN, 0);
+        SetPWMRate(FANHEATING_PIN, 50);  // Generally in not a good idea to turn of PTC heaters fan right after shutdown.ToDo: add 5 min timer
         SetPWMRate(HEATING_PIN, 0);      
         break;
 
