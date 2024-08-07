@@ -20,7 +20,7 @@
 
 #include <Arduino.h>
 
-#define APP_VERSION "0.48"
+#define APP_VERSION "0.49"
 
 // Defines Pins
 #define FANAIR_PIN 9
