@@ -26,6 +26,7 @@
 #define SCR_MENUBASE    10      // Basenumber Menu
 #define SCR_SETTEMP     20      // Set temperature
 #define SCR_SETTIME     30      // Set dry time
+#define SCR_ERROR       90
 
 #define SCR_RUNNING     40      // Show data for temperature and humidity
 #define SCR_RUNBREAK    41      // Run Drying paused or select stop 
@@ -57,6 +58,7 @@ public:
     void PrintDestTemp(int dvalue, uint8_t startPos);
     void PrintDestTime(int hour, int minute, uint8_t startPos);
     void PrintHFVState(boolean heater, boolean heaterfan, boolean ventilation, boolean turbomode);
-    void ScreenOut(uint8_t uiScreenID); 
+    void ScreenOut(uint8_t uiScreenID);
+    void PrintError(const char* errorMsg);
 
 };
