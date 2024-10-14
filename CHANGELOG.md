@@ -1,6 +1,11 @@
 # Changelog
 All notable changes for this project will be documented in this file
 
+## [0.49.1] - 2024-10-14
+### Changed
+- Fork from original
+- Replaced DHT11 with SHT31
+
 ## [0.49] - 2024-06-18
 ### Added
 - Handling sensor error. If sensor fails during drying cycle, then drying process will be stopped and error message appear on the screen.

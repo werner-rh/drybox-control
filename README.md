@@ -1,13 +1,19 @@
 DryBox dryController
 ===
 
-## Version 0.49
+## Version 0.49.1
 
 ## Requirements
 - Arduino IDE 1.8.2 or higher
 - NewliquidCrystal (I2C)
+- Adafruit SHT31 Library
+- Adafruit BusIO (dependency of SHT31 library)
 
 - 3D printing files and other parts list: https://www.printables.com/de/model/724722-filament-dry-box-heated-ventilated-arduino-control
+
+## Changes with original
+This is a fork from [werner_rh](https://github.com/werner-rh/drybox-control), in which I made the following changes:
+- Replaced the DHT11 with SHT31
 
 ## Description
 Controller for an active heated and ventilated Filament DryBox. The Dryer contains a PTC Heater and a Fan for fresh dry air.
@@ -22,3 +28,6 @@ the box sigifignant. The warm up is much faster and also eaysier to to reach 55 
 - PLA, PLA+                : 40-45 degree
 - ABS, ABS+,  PETG         : 45-50 degree
 - PVA,PVB, ASA, TPU, PMMA  : 50-55 degree
+
+## Schematics
+![On a breadboard](./Fritzing/Schematics_bb.png)

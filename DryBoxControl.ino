@@ -20,7 +20,7 @@
  * 
  * Pins:
  * 
- * A4,A5  - I2C Display control (A4 - SDA, A5 - SCL)
+ * A4,A5  - I2C Display control and SHT31 (A4 - SDA, A5 - SCL)
  * 
  * 
 
@@ -32,7 +32,6 @@
  * D5     - Rotary Encoder Switch
  * D6     - Rotary Encoder DT_pin                 Note: some encoder are different and you may have to change DT and CLK Pin.
  * D7     - Rotary Encoder CLK_pin                      Clockwise spin should increase all values.
- * D8     - Digital in DHT11 sensor
  * D9     - Analog out PWM Fan Air exchange
  * D10    - Analog out PWM Fan Heating
  * D11    - Analog out PWM Heating
@@ -58,16 +57,11 @@
 #include <Wire.h>
 #include <EEPROM.h>
 #include <Arduino.h>
-#include <DHT.h>
+#include "Adafruit_SHT31.h"
 #include "DryBoxControl.h"
 #include "WRKeyStateDef.h"
 #include "DryBoxDisplay.h"
 #include "HeatingData.h"
-
-// defines for DHT11 Temp and Humitidy Sensor
-#define DHTPIN 8        // Digital pin connected to the DHT sensor
-#define DHTTYPE DHT11   // chose the DHT type you are using
-//#define DHTTYPE DHT22 
 
 volatile uint8_t B100HzToggle = 0;  // 100 Hertz Signal
 uint8_t ui10MilliSekCount = 0;
@@ -109,7 +103,7 @@ boolean StateVentilationOn = false;
 boolean turboMode = false;
 
 DryBoxDisplay display;
-DHT dht(DHTPIN, DHTTYPE);
+Adafruit_SHT31 sht31 = Adafruit_SHT31();
 
 
 /***
@@ -152,6 +146,7 @@ SIGNAL(TIMER0_COMPA_vect)
 }
 
 void setup() {
+  sht31.begin(0x44);
   
   // setup Rotary encoder
   pinMode (DT_pin, INPUT);
@@ -175,7 +170,6 @@ void setup() {
   display.Setup();
   display.SetVersion(APP_VERSION);
   display.ScreenOut(SCR_WELCOME);
-  dht.begin();                      // start DHT
 
   // Timer setup --------------------------
   // Timer0 is already used for millis() - we'll just interrupt somewhere
@@ -267,7 +261,7 @@ void loop() {
   static int aktBreakModNo = 1;
 
   static uint8_t ui100HzSecCounter=0;   // counter for a second
-  static uint8_t ui100HzSensorTimer=200;  // read DHT11 sensor every 2 seconds
+  static uint8_t ui100HzSensorTimer=200;  // read SHT31 sensor every 2 seconds
   static int runMinuteTimer = 6000;
   static int airExChgEndCounter = 2000;
   static float humidity = 0.0;
@@ -296,20 +290,19 @@ void loop() {
 
     CheckKeyState(&encoderBUTTON_State, EncSwitch);
 
-    // The DHT11 is a little slow,. So we shouldn't
-    // receive values too quickly
+    // No need to read sensor every loop
     if(ui100HzSensorTimer > 0) {
       ui100HzSensorTimer--;
     } else {
-      ui100HzSensorTimer = 200;
-      humidity = dht.readHumidity();
-      temperature = dht.readTemperature();
+      ui100HzSensorTimer = 1000;
+      humidity = sht31.readHumidity();
+      temperature = sht31.readTemperature();
       // Check for NaN values
       if (isnan(humidity) || isnan(temperature)) {
         // Stop the drying process if NaN values are detected
         dryController(DST_TEARDOWN, temperature);
         display.ScreenOut(SCR_ERROR); 
-        display.PrintError("DHT Sensor Error"); // Display error message
+        display.PrintError("SHT Sensor Error"); // Display error message
   
         AppState = AST_IDLE; // Transition to a safe state
       }
