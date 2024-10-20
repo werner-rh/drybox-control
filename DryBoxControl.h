@@ -23,9 +23,16 @@
 #define APP_VERSION "0.49"
 
 // Defines Pins
-#define FANAIR_PIN 9
-#define FANHEATING_PIN 10
-#define HEATING_PIN 11
+#ifdef ARDUINO_AVR_NANO
+ #define FANAIR_PIN 9
+ #define FANHEATING_PIN 10
+ #define HEATING_PIN 11
+#elif ESP8266
+  #define FANAIR_PIN 0
+  #define FANHEATING_PIN 2
+  #define HEATING_PIN 15
+#endif
+
 
 // Defines Mode selection -------------------------------------------
 #define SELMOD_DRYTEMP      1
