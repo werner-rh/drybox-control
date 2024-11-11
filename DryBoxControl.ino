@@ -111,6 +111,7 @@ int encoder_value = 500;
 int last_encoder_value  = 500;
 int DT_pinstate;
 int last_DT_pinstate;
+int nan_count = 0;
 
 int AirFanSpeed = 100;    // Extract Fan Speed in Percent
 int HeatFanSpeed = 50;    // HeatFan Speed in Percent
@@ -392,15 +393,23 @@ void loop() {
       temperature = dht.readTemperature();
       // Check for NaN values
       if (isnan(humidity) || isnan(temperature)) {
-        // Stop the drying process if NaN values are detected
-        dryController(DST_TEARDOWN, temperature);
+        nan_count++;
+        if (nan_count >= 5) {
+          // Stop the drying process if NaN values are detected
+          dryController(DST_TEARDOWN, temperature);
 #ifdef ESP8266
-        display.ScreenOut(SCR_ERROR);
-        display.PrintError("DHT Sensor Error"); // Display error message
+          display.ScreenOut(SCR_ERROR);
+          display.PrintError("DHT Sensor Error"); // Display error message
 #endif
-        AppState = AST_IDLE; // Transition to a safe state
+          AppState = AST_IDLE; // Transition to a safe state
+          dht.begin();
+          nan_count = 0;
+        }
+      } else {
+        nan_count = 0;
       }
-      if (AppState == AST_MODE_SELECT || AppState == AST_RUNDRYING || AppState == AST_TESTMODE) {
+      Serial.println(nan_count);
+      if ((AppState == AST_MODE_SELECT || AppState == AST_RUNDRYING || AppState == AST_TESTMODE) && nan_count == 0) {
         display.PrintTHValue(temperature, humidity);
 #ifdef ESP8266
         mqtt_client.publish((String(mqtt_topic) + "/measurement/temperature").c_str(), (String(temperature, 1) + " °C").c_str());
