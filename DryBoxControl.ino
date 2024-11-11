@@ -82,6 +82,7 @@
   #include <Ticker.h>
   #include <ESP8266WiFi.h>
   #include <PubSubClient.h>
+  #include <ArduinoJson.h>
   #include "Secrets.h"
 #endif
 
@@ -164,6 +165,7 @@ DHT dht(DHTPIN, DHTTYPE);
       Serial.printf("Connecting to MQTT Broker as %s.....\n", client_id.c_str());
       if (mqtt_client.connect(client_id.c_str(), mqtt_username, mqtt_password, (String(mqtt_topic) + "/status").c_str(), 0, true, "offline")) {
         Serial.println("Connected to MQTT broker");
+        mqtt_client.setBufferSize(1024);
         mqtt_client.subscribe(mqtt_topic);
         mqtt_client.publish((String(mqtt_topic) + "/status").c_str(), "online", true);
       } else {
@@ -368,6 +370,13 @@ void loop() {
 
   aktStateTrigger = B100HzToggle;
 
+#ifdef ESP8266
+  StaticJsonDocument<200> jsonStatus;
+  StaticJsonDocument<1024> jsonData;
+  char jsonBuffer[10124];
+//  char jsonBuffer2[1024];
+#endif
+
   // Processing State-Machine. ----------------------------------------------------------
   // The state machine is triggered on every Change of flank of the timer toogle.
   // This happens 100 times in a second.
@@ -381,6 +390,7 @@ void loop() {
     if (!mqtt_client.connected()) {
       connectToMQTTBroker();
     }
+    jsonStatus["status"] = "online";
 #endif
     
     // The DHT11 is a little slow,. So we shouldn't
@@ -412,25 +422,30 @@ void loop() {
       if ((AppState == AST_MODE_SELECT || AppState == AST_RUNDRYING || AppState == AST_TESTMODE) && nan_count == 0) {
         display.PrintTHValue(temperature, humidity);
 #ifdef ESP8266
-        mqtt_client.publish((String(mqtt_topic) + "/measurement/temperature").c_str(), (String(temperature, 1) + " °C").c_str());
-        mqtt_client.publish((String(mqtt_topic) + "/raw/temperature").c_str(), String(temperature, 1).c_str());
-        mqtt_client.publish((String(mqtt_topic) + "/measurement/humidity").c_str(), (String(humidity, 0) + " %").c_str());
-        mqtt_client.publish((String(mqtt_topic) + "/raw/humidity").c_str(), String(humidity, 0).c_str());
+        JsonObject measurement = jsonData.createNestedObject("measurement");
+        measurement["temperature"] = String(temperature, 1) + " °C";
+        measurement["humidity"] = String(humidity, 0) + " %";
 
-        mqtt_client.publish((String(mqtt_topic) + "/heater/StateHeaterOn").c_str(), String(StateHeaterOn).c_str());
-        mqtt_client.publish((String(mqtt_topic) + "/heater/StateHeaterFanOn").c_str(), String(StateHeaterFanOn).c_str());
-        mqtt_client.publish((String(mqtt_topic) + "/heater/StateVentilationOn").c_str(), String(StateVentilationOn).c_str());
-        mqtt_client.publish((String(mqtt_topic) + "/heater/turboMode").c_str(), String(turboMode).c_str());
+        JsonObject rawMeasurement = jsonData.createNestedObject("raw");
+        rawMeasurement["temperature"] = temperature;
+        rawMeasurement["humidity"] = humidity;
 
-        mqtt_client.publish((String(mqtt_topic) + "/heater/DryTemperature").c_str(), String(DryTemperature).c_str());
-        mqtt_client.publish((String(mqtt_topic) + "/heater/DryTime_Hours").c_str(), String(DryTime_Hours).c_str());
-        mqtt_client.publish((String(mqtt_topic) + "/heater/DryTime_Minutes").c_str(), String(DryTime_Minutes).c_str());
-        mqtt_client.publish((String(mqtt_topic) + "/heater/curDryTime_Hours").c_str(), String(curDryTime_Hours).c_str());
-        mqtt_client.publish((String(mqtt_topic) + "/heater/curDryTime_Minutes").c_str(), String(curDryTime_Minutes).c_str());
+        JsonObject heater = jsonData.createNestedObject("heater");
+        heater["StateHeaterOn"] = StateHeaterOn;
+        heater["StateHeaterFanOn"] = StateHeaterFanOn;
+        heater["StateVentilationOn"] = StateVentilationOn;
+        heater["turboMode"] = turboMode;
+        heater["DryTemperature"] = DryTemperature;
+        heater["DryTime_Hours"] = DryTime_Hours;
+        heater["DryTime_Minutes"] = DryTime_Minutes;
+        heater["curDryTime_Hours"] = curDryTime_Hours;
+        heater["curDryTime_Minutes"] = curDryTime_Minutes;
+        heater["ventilationHeaterPWM"] = heatingData.ventilationHeaterPWM;
+        heater["ventilationHeaterFanPWM"] = heatingData.ventilationHeaterFanPWM;
+        heater["ventilationFanPWM"] = heatingData.ventilationFanPWM;
 
-        mqtt_client.publish((String(mqtt_topic) + "/heater/ventilationHeaterPWM").c_str(), String(heatingData.ventilationHeaterPWM).c_str());
-        mqtt_client.publish((String(mqtt_topic) + "/heater/ventilationHeaterFanPWM").c_str(), String(heatingData.ventilationHeaterFanPWM).c_str());
-        mqtt_client.publish((String(mqtt_topic) + "/heater/ventilationFanPWM").c_str(), String(heatingData.ventilationFanPWM).c_str());
+        serializeJson(jsonData, jsonBuffer);
+        mqtt_client.publish((String(mqtt_topic) + "/data").c_str(), jsonBuffer);
 #endif
       }
     }
@@ -438,8 +453,10 @@ void loop() {
 #ifdef ESP8266
     if (AppState != oldAppState) {
         oldAppState = AppState;
-        mqtt_client.publish((String(mqtt_topic) + "/AppState").c_str(), String(AppState).c_str());
+        jsonStatus["AppState"] = AppState;
     }
+    serializeJson(jsonStatus, jsonBuffer);
+    mqtt_client.publish((String(mqtt_topic) + "/statusdata").c_str(), jsonBuffer);
 #endif
 
     // App-State-Machine processing and step through
