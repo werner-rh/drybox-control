@@ -374,7 +374,6 @@ void loop() {
   StaticJsonDocument<200> jsonStatus;
   StaticJsonDocument<1024> jsonData;
   char jsonBuffer[10124];
-//  char jsonBuffer2[1024];
 #endif
 
   // Processing State-Machine. ----------------------------------------------------------

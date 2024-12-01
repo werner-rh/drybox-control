@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "wemos_d1_mini")(type "KiCad")(uri "${KICAD_USER_TEMPLATE_DIR}/d1_mini_kicad-master/library/wemos_d1_mini.pretty")(options "")(descr ""))
+)
