@@ -1,6 +1,15 @@
 # Changelog
 All notable changes for this project will be documented in this file
 
+## [0.50] - 2024-12-02
+### Added
+- Port to platform ESP8266 (Wemos D1 Mini): software timer interrupt handling; wifi; Secrets.h for wifi and mqtt config
+- MQTT for ESP8266: Publish sensor data
+- ESP8266: Example configs for telegraf and grafana for transport and visualisation of sensor data
+- ESP8266: PCB layout
+### changed
+- Handling sensor error: Added a retry mechanism for reading sensor data if sensor is temporarily offline.
+
 ## [0.49] - 2024-06-18
 ### Added
 - Handling sensor error. If sensor fails during drying cycle, then drying process will be stopped and error message appear on the screen.
