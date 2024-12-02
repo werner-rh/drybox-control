@@ -20,7 +20,7 @@
 
 #include <Arduino.h>
 
-#define APP_VERSION "0.49"
+#define APP_VERSION "0.50"
 
 // Defines Pins
 #ifdef ARDUINO_AVR_NANO
