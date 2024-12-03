@@ -154,8 +154,10 @@ SIGNAL(TIMER0_COMPA_vect)
 void setup() {
   
   // setup Rotary encoder
+  pinMode (EncSwitch, INPUT);
   pinMode (DT_pin, INPUT);
   pinMode (CLK_pin, INPUT);
+  digitalWrite(EncSwitch, HIGH);  // enable intern pull up resistor
   digitalWrite(DT_pin, HIGH);
   digitalWrite(CLK_pin, HIGH);
 

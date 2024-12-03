@@ -1,6 +1,10 @@
 # Changelog
 All notable changes for this project will be documented in this file
 
+## [0.49.1] - 2024-12-03
+### Added
+- setup configuration for rotary encoder switch
+
 ## [0.49] - 2024-06-18
 ### Added
 - Handling sensor error. If sensor fails during drying cycle, then drying process will be stopped and error message appear on the screen.
