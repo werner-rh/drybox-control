@@ -48,7 +48,7 @@ HeatingData::HeatingData()
 void HeatingData::SetupHeatingValues(int dryDestTemp)
 {
 
-  ventilationFanPWN = 80;       // for the ventilation fan we only need one value for all
+  ventilationFanPWM = 80;       // for the ventilation fan we only need one value for all
   airExtractionTime = 20;
   finalAirExtractionTime = 30;
   airExchangeIntervallMinutes = 5;    // don't set this value less then 4
@@ -142,4 +142,3 @@ void HeatingData::SetupHeatingValues(int dryDestTemp)
   rampUpHeatPWM[1] = (defaultHeaterPWM /4) * 2;
   rampUpHeatPWM[2] = (defaultHeaterPWM /4) * 3;
 }
-
