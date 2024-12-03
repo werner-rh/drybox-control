@@ -4,6 +4,8 @@ All notable changes for this project will be documented in this file
 ## [0.49.1] - 2024-12-03
 ### Added
 - setup configuration for rotary encoder switch
+### changed
+- rename ventialtionFanPWN to ventialtionFanPWM
 
 ## [0.49] - 2024-06-18
 ### Added
