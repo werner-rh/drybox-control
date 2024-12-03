@@ -790,7 +790,7 @@ void loop() {
 
         if(airExChgMinutesCounter >= heatingData.airExchangeIntervallMinutes) {
           airExChgOneMinuteCounter = (int) heatingData.airExtractionTime * 100;  // fresh air for 20 seconds
-          SetPWMRate(FANAIR_PIN, heatingData.ventilationFanPWN);     // speed for ventilation fan in percent. Adjust value here, if you need more or less
+          SetPWMRate(FANAIR_PIN, heatingData.ventilationFanPWM);     // speed for ventilation fan in percent. Adjust value here, if you need more or less
           SetPWMRate(HEATING_PIN, heatingData.ventilationHeaterPWM);  // additional power to the heater for smaller temperature drop
           DryState = DST_AIR_EXCHANGE;
         }
