@@ -98,6 +98,7 @@
   int DT_pin = 16;   //swap lines to change direction on the encoder
   int CLK_pin = 12;   //swap lines to change direction on the encoder
   Ticker timer;
+  bool mqttConnected = false;
 #else
   #error "Unsupported platform"
 #endif
@@ -151,30 +152,46 @@ DHT dht(DHTPIN, DHTTYPE);
   void connectToWiFi() {
     WiFi.begin(ssid, password);
     Serial.print("Connecting to WiFi");
-    while (WiFi.status() != WL_CONNECTED) {
+    unsigned long startAttemptTime = millis();
+    const unsigned long timeout = 10000;
+  
+    while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < timeout) {
       delay(500);
       Serial.print(".");
     }
-    Serial.println("\nConnected to the WiFi network");
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("\nConnected to the WiFi network");
+    } else {
+      Serial.println("\nFailed to connect to WiFi. Continuing without WiFi.");
+    }
   }
   
   
   void connectToMQTTBroker() {
-    while (!mqtt_client.connected()) {
+    unsigned long startAttemptTime = millis();
+    const unsigned long timeout = 5000;
+    if (!WiFi.isConnected()) {
+      return;
+    }
+
+    while (!mqtt_client.connected() && millis() - startAttemptTime < timeout) {
       String client_id = String(mqtt_topic) + String("-")  + String(WiFi.macAddress());
       Serial.printf("Connecting to MQTT Broker as %s.....\n", client_id.c_str());
       if (mqtt_client.connect(client_id.c_str(), mqtt_username, mqtt_password, (String(mqtt_topic) + "/status").c_str(), 0, true, "offline")) {
         Serial.println("Connected to MQTT broker");
+        mqttConnected = true;
         mqtt_client.setBufferSize(1024);
         mqtt_client.subscribe(mqtt_topic);
         mqtt_client.publish((String(mqtt_topic) + "/status").c_str(), "online", true);
+        return;
       } else {
-         Serial.print("Failed to connect to MQTT broker, rc=");
-         Serial.print(mqtt_client.state());
-         Serial.println(" try again in 5 seconds");
-         delay(5000);
+        Serial.print("Failed to connect to MQTT broker, rc=");
+        Serial.print(mqtt_client.state());
+        Serial.println(" try again...");
       }
+      delay(1000);
     }
+    mqttConnected = false;
   }
 #endif
 
@@ -388,8 +405,11 @@ void loop() {
     CheckKeyState(&encoderBUTTON_State, EncSwitch);
 
 #ifdef ESP8266
-    if (!mqtt_client.connected()) {
-      connectToMQTTBroker();
+    if (mqttConnected) {
+      mqtt_client.loop();
+      if (!mqtt_client.connected()) {
+        connectToMQTTBroker();
+      }
     }
     jsonStatus["status"] = "online";
 #endif
@@ -417,7 +437,6 @@ void loop() {
       } else {
         nan_count = 0;
       }
-      Serial.println(nan_count);
       if ((AppState == AST_MODE_SELECT || AppState == AST_RUNDRYING || AppState == AST_TESTMODE) && nan_count == 0) {
         display.PrintTHValue(temperature, humidity);
 #ifdef ESP8266
