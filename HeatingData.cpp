@@ -40,7 +40,7 @@ HeatingData::HeatingData()
   float compareOffsetTurboMode        - value below destination temperature, when heater is switched to default power
   uint8_t ventilationHeaterPWM        - power value for heater during ventilation
   uint8_t ventilationHeaterFanPWM     - power value for heater fan during ventilation
-  uint8_t ventilationFanPWN           - power value for ventilation fan during ventilation
+  uint8_t ventilationFanPWM           - power value for ventilation fan during ventilation
   uint8_t airExtractionTime;          - air extraction time in seconds, done in intervalls during drying process
   uint8_t finalAirExtractionTime      - final air extraction time in seconds after finishing drying process
   uint8_t airExchangeIntervallMinutes - air exchange intervall in minutes
