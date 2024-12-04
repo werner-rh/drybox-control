@@ -227,8 +227,10 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Start");
   // setup Rotary encoder
+  pinMode (EncSwitch, INPUT);
   pinMode (DT_pin, INPUT);
   pinMode (CLK_pin, INPUT);
+  digitalWrite(EncSwitch, HIGH);  // enable intern pull up resistor
   digitalWrite(DT_pin, HIGH);
   digitalWrite(CLK_pin, HIGH);
 
@@ -406,10 +408,8 @@ void loop() {
         if (nan_count >= 3) {
           // Stop the drying process if NaN values are detected
           dryController(DST_TEARDOWN, temperature);
-#ifdef ESP8266
           display.ScreenOut(SCR_ERROR);
           display.PrintError("DHT Sensor Error"); // Display error message
-#endif
           AppState = AST_IDLE; // Transition to a safe state
           dht.begin();
           nan_count = 0;
