@@ -1,6 +1,13 @@
 # Changelog
 All notable changes for this project will be documented in this file
 
+## [0.50 ESP 01] - 2025-03-21
+### Added
+- Trouble shooting guide for ESP in README
+### changed
+- grafana.json for better import management without UIDs
+- Versioning for ESP branch now with separate version tag
+ 
 ## [0.50] - 2024-12-02
 ### Added
 - Port to platform ESP8266 (Wemos D1 Mini): software timer interrupt handling; wifi; Secrets.h for wifi and mqtt config
